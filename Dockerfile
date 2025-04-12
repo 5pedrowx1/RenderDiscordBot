@@ -22,5 +22,8 @@ WORKDIR /app
 # Copia os arquivos publicados no estágio de build para a imagem final
 COPY --from=build /app/publish .
 
+# Copia o arquivo serviceAccountKey.enc da pasta RenderDiscordBot para /app
+COPY RenderDiscordBot/serviceAccountKey.enc /app/serviceAccountKey.enc
+
 # Define o comando de entrada para iniciar a aplicação
 ENTRYPOINT ["dotnet", "RenderDiscordBot.dll"]
