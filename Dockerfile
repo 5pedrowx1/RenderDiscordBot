@@ -6,10 +6,10 @@ EXPOSE 80
 # Use a imagem base do SDK para build
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
 WORKDIR /src
-COPY ["RenderDiscordBot/RenderDiscordBot/RenderDiscordBot.csproj", "RenderDiscordBot/RenderDiscordBot/"]
+COPY ["RenderDiscordBot/RenderDiscordBot.csproj", "RenderDiscordBot/*"]
 RUN dotnet restore "RenderDiscordBot/RenderDiscordBot.csproj"
 COPY . .
-WORKDIR "/src/RenderDiscordBot/RenderDiscordBot"
+WORKDIR "/src/RenderDiscordBot"
 RUN dotnet build "RenderDiscordBot.csproj" -c Release -o /app/build
 
 FROM build AS publish
