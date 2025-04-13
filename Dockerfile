@@ -1,32 +1,34 @@
-# ===== Stage 1: Build =====
+# ========================
+# STAGE 1: Build
+# ========================
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copie o arquivo global.json (certifique-se de que ele está na raiz)
+# Copia o global.json (se existir)
 COPY global.json ./
 
-# Copia o arquivo .csproj para restaurar as dependências
+# Copia o arquivo .csproj e restaura as dependências
 COPY ["RenderDiscordBot/RenderDiscordBot.csproj", "RenderDiscordBot/"]
-
-# Restaura as dependências do projeto
 RUN dotnet restore "RenderDiscordBot/RenderDiscordBot.csproj"
 
-# Copia o restante do código-fonte para o container
+# Copia o restante dos arquivos do projeto
 COPY . .
 
-# Define o diretório de trabalho e publica a aplicação no modo Release
+# Define o diretório de trabalho e publica a aplicação
 WORKDIR "/src/RenderDiscordBot"
-RUN dotnet publish "RenderDiscordBot.csproj" -c Release -o /app/publish
+RUN dotnet publish "RenderDiscordBot.csproj" -c Release -o /app/publish --no-restore
 
-# ===== Stage 2: Runtime =====
+# ========================
+# STAGE 2: Runtime
+# ========================
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 
-# Copia os arquivos publicados no estágio de build para a imagem final
+# Copia os arquivos publicados da stage de build
 COPY --from=build /app/publish .
 
-# Opcional: copie outros arquivos necessários, por exemplo, um arquivo de chave
+# Copia outros arquivos necessários (ex: chave ou config)
 COPY RenderDiscordBot/serviceAccountKey.enc /app/serviceAccountKey.enc
 
-# Define o comando de entrada para iniciar a aplicação
+# Define o comando padrão de inicialização
 ENTRYPOINT ["dotnet", "RenderDiscordBot.dll"]
