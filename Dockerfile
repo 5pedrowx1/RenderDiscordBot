@@ -1,7 +1,7 @@
 # ========================
 # STAGE 1: Build
 # ========================
-FROM mcr.microsoft.com/dotnet/sdk:9.0-preview AS build
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
 # (Optional) Copy global.json if it exists
@@ -21,7 +21,7 @@ RUN dotnet publish "RenderDiscordBot.csproj" -c Release -o /app/publish --no-res
 # ========================
 # STAGE 2: Runtime
 # ========================
-FROM mcr.microsoft.com/dotnet/aspnet:9.0-preview AS runtime
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 
 # Copy the published output from the build stage
