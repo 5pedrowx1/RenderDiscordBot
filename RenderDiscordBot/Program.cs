@@ -8,6 +8,9 @@ using DSharpPlus.Net;
 using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.CommandsNext.Exceptions;
 using DSharpPlus.Entities;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace RenderDiscordBot
 {
@@ -15,7 +18,16 @@ namespace RenderDiscordBot
     {
         public static DiscordClient? Client { get; private set; }
         private static Timer? _lavalinkMonitorTimer;
-        static async Task Main(string[] args)
+
+        public static async Task Main(string[] args)
+        {
+            var webServerTask = StartWebServerAsync();
+            var botTask = RunBotAsync(args);
+
+            await Task.WhenAll(botTask, webServerTask);
+        }
+
+        private static async Task RunBotAsync(string[] args)
         {
             FirebaseService.InitializeFirebase();
             Config botConfig = await ConfigService.GetConfigFromFirestoreAsync();
@@ -26,7 +38,7 @@ namespace RenderDiscordBot
                 Token = botConfig.Token,
                 TokenType = TokenType.Bot,
                 AutoReconnect = true,
-                MinimumLogLevel = Microsoft.Extensions.Logging.LogLevel.None
+                MinimumLogLevel = LogLevel.Debug
             });
 
             var lavalink = Client.UseLavalink();
@@ -53,7 +65,6 @@ namespace RenderDiscordBot
             };
 
             var commands = Client.UseCommandsNext(commandsConfig);
-
             commands.RegisterCommands<MusicCommands.MusicCommands>();
             commands.CommandErrored += OnCommandError;
 
@@ -67,8 +78,21 @@ namespace RenderDiscordBot
 
             await Client.ConnectAsync();
             await Client.GetLavalink().ConnectAsync(lavalinkConfig);
-            _lavalinkMonitorTimer = new Timer(async _ => await CheckLavalinkConnection(), null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+
+            _lavalinkMonitorTimer = new Timer(async _ => await CheckLavalinkConnection());
+
             await Task.Delay(-1);
+        }
+
+        private static async Task StartWebServerAsync()
+        {
+            var port = Environment.GetEnvironmentVariable("PORT") ?? "3000";
+
+            var builder = WebApplication.CreateBuilder();
+            var app = builder.Build();
+
+            app.MapGet("/", () => "O bot está rodando!");
+            await app.RunAsync($"http://0.0.0.0:{port}");
         }
 
         private static async Task CheckLavalinkConnection()

@@ -11,6 +11,7 @@ namespace MusicCommands
     public class MusicCommands : BaseCommandModule
     {
         private static Config _config = null!;
+        private bool _isAdvancing = false;
         private static readonly Dictionary<ulong, PlaylistState> _playlists = [];
         private static readonly Dictionary<ulong, CancellationTokenSource> _interactionTokens = [];
 
@@ -483,6 +484,7 @@ namespace MusicCommands
             var playlistTracks = playlist.Tracks.Items;
             var fetchedTracks = new List<LavalinkTrack>();
             var notFoundTracks = new List<string>();
+
             var userVC = ctx.Member!.VoiceState.Channel;
             var lavalinkInstance = ctx.Client.GetLavalink();
 
@@ -506,21 +508,63 @@ namespace MusicCommands
                 return;
             }
 
-            foreach (var item in playlistTracks)
+            if (playlistTracks.Count > 20)
             {
-                if (item.Track is FullTrack track)
+                var progressEmbed = new DiscordEmbedBuilder
                 {
-                    string artistName = track.Artists.FirstOrDefault()?.Name ?? "";
-                    string query = $"{track.Name} {artistName}";
-                    var searchResult = await node.Rest.GetTracksAsync(query);
+                    Title = "🎶 Carregando as faixas da playlist...",
+                    Description = $"Progresso: `0 / {playlistTracks.Count}`",
+                    Color = DiscordColor.Blurple,
+                    Timestamp = DateTime.UtcNow
+                };
 
-                    if (searchResult.LoadResultType == LavalinkLoadResultType.NoMatches ||
-                        searchResult.LoadResultType == LavalinkLoadResultType.LoadFailed)
+                var progressMessage = await ctx.Channel.SendMessageAsync(embed: progressEmbed);
+                int processed = 0;
+
+                foreach (var item in playlistTracks)
+                {
+                    processed++;
+
+                    if (item.Track is FullTrack track)
                     {
-                        notFoundTracks.Add(query);
-                        continue;
+                        string artistName = track.Artists.FirstOrDefault()?.Name ?? "";
+                        string query = $"{track.Name} {artistName}";
+                        var searchResult = await node.Rest.GetTracksAsync(query);
+
+                        if (searchResult.LoadResultType == LavalinkLoadResultType.NoMatches ||
+                            searchResult.LoadResultType == LavalinkLoadResultType.LoadFailed)
+                        {
+                            notFoundTracks.Add(query);
+                            continue;
+                        }
+
+                        fetchedTracks.Add(searchResult.Tracks.First());
                     }
-                    fetchedTracks.Add(searchResult.Tracks.First());
+
+                    progressEmbed.Description = $"Progresso: `{processed} / {playlistTracks.Count}`";
+                    await progressMessage.ModifyAsync(new DiscordMessageBuilder().WithEmbed(progressEmbed));
+                }
+
+                await progressMessage.DeleteAsync();
+            }
+
+            else
+            {
+                foreach (var item in playlistTracks)
+                {
+                    if (item.Track is FullTrack track)
+                    {
+                        string artistName = track.Artists.FirstOrDefault()?.Name ?? "";
+                        string query = $"{track.Name} {artistName}";
+                        var searchResult = await node.Rest.GetTracksAsync(query);
+                        if (searchResult.LoadResultType == LavalinkLoadResultType.NoMatches ||
+                            searchResult.LoadResultType == LavalinkLoadResultType.LoadFailed)
+                        {
+                            notFoundTracks.Add(query);
+                            continue;
+                        }
+                        fetchedTracks.Add(searchResult.Tracks.First());
+                    }
                 }
             }
 
@@ -550,16 +594,98 @@ namespace MusicCommands
                 };
 
                 if (notFoundTracks.Count > 0)
-                {
                     embed.AddField("Faixas não encontradas", string.Join(", ", notFoundTracks));
-                }
 
-                await ctx.Channel.SendMessageAsync(embed: embed);
+                var queueMessage = await ctx.Channel.SendMessageAsync(embed: embed);
+                await Task.Delay(TimeSpan.FromSeconds(10));
+                await queueMessage.DeleteAsync();
+                return;
+            }
+
+            if (conn.CurrentState.CurrentTrack != null)
+            {
+                if (!_playlists.ContainsKey(ctx.Guild.Id))
+                {
+                    _playlists[ctx.Guild.Id] = new PlaylistState
+                    {
+                        TrackStartTime = DateTime.UtcNow,
+                        CurrentIndex = -1,
+                        Tracks = new List<QueuedTrack>()
+                    };
+                }
+                foreach (var track in fetchedTracks)
+                {
+                    _playlists[ctx.Guild.Id].Tracks.Add(new QueuedTrack
+                    {
+                        Track = track,
+                        AddedBy = ctx.User.Id
+                    });
+                }
+                await ctx.Channel.SendMessageAsync("Uma música já está tocando, faixas adicionadas à fila.");
                 return;
             }
 
             await conn.PlayAsync(fetchedTracks.First());
             var trackStartTime = DateTime.UtcNow;
+
+            conn.PlaybackFinished += async (connection, eventArgs) =>
+            {
+                if (_playlists.TryGetValue(ctx.Guild.Id, out var state) && state.CurrentMessage != null)
+                {
+                    var oldEmbed = state.CurrentMessage.Embeds[0];
+                    var builder = new DiscordMessageBuilder().WithEmbed(oldEmbed);
+                    builder.ClearComponents();
+                    await state.CurrentMessage.ModifyAsync(builder);
+                }
+
+                if (_playlists[ctx.Guild.Id].CurrentIndex < _playlists[ctx.Guild.Id].Tracks.Count - 1)
+                {
+                    _playlists[ctx.Guild.Id].CurrentIndex++;
+                    _playlists[ctx.Guild.Id].TrackStartTime = DateTime.UtcNow;
+                    var nextQueuedTrack = _playlists[ctx.Guild.Id].Tracks[_playlists[ctx.Guild.Id].CurrentIndex];
+                    await conn.PlayAsync(nextQueuedTrack.Track);
+
+                    string? nextArtworkUrl = null;
+                    if (nextQueuedTrack.Track.Uri != null && nextQueuedTrack.Track.Uri.Host.Contains("youtube.com"))
+                    {
+                        var videoId = ExtractYouTubeVideoId(nextQueuedTrack.Track.Uri.ToString());
+                        if (videoId != null)
+                            nextArtworkUrl = $"https://img.youtube.com/vi/{videoId}/0.jpg";
+                    }
+
+                    var newEmbed = new DiscordEmbedBuilder
+                    {
+                        Color = DiscordColor.Purple,
+                        Title = "🎵 Agora Tocando",
+                        Description = $"🎶 **{nextQueuedTrack.Track.Title}**\n" +
+                                      $"📝 **Autor:** {nextQueuedTrack.Track.Author}\n" +
+                                      $"🔗 **[Ouvir no navegador]({nextQueuedTrack.Track.Uri})**\n" +
+                                      $"👤 **Adicionado por:** (ID: {nextQueuedTrack.AddedBy})",
+                        Timestamp = DateTime.UtcNow
+                    };
+                    if (nextArtworkUrl != null)
+                        newEmbed.Thumbnail = new DiscordEmbedBuilder.EmbedThumbnail { Url = nextArtworkUrl };
+
+                    var newMessageBuilder = new DiscordMessageBuilder()
+                        .WithEmbed(newEmbed)
+                        .AddComponents(
+                            new DiscordButtonComponent(ButtonStyle.Primary, "pause", "⏸️ Pausa"),
+                            new DiscordButtonComponent(ButtonStyle.Success, "resume", "▶️ Retomar"),
+                            new DiscordButtonComponent(ButtonStyle.Primary, "next", "⏭️ Próxima"),
+                            new DiscordButtonComponent(ButtonStyle.Danger, "stop", "⏹️ Parar")
+                        );
+                    var newMessage = await ctx.Channel.SendMessageAsync(newMessageBuilder);
+                    _playlists[ctx.Guild.Id].CurrentMessage = newMessage;
+
+                    _interactionTokens[ctx.Guild.Id].Cancel();
+                    _interactionTokens[ctx.Guild.Id] = new CancellationTokenSource();
+                    _ = StartInteractivityLoop(ctx, conn, _interactionTokens[ctx.Guild.Id].Token);
+                }
+                else
+                {
+                    await conn.StopAsync();
+                }
+            };
 
             string? artworkUrl = null;
             if (fetchedTracks.First().Uri != null && fetchedTracks.First().Uri.Host.Contains("youtube.com"))
@@ -578,10 +704,7 @@ namespace MusicCommands
                               $"🔗 **[Ouvir no navegador]({fetchedTracks.First().Uri})**\n" +
                               $"👤 **Adicionado por:** {ctx.User.Username}",
                 Thumbnail = artworkUrl != null ? new DiscordEmbedBuilder.EmbedThumbnail { Url = artworkUrl } : null,
-                Footer = new DiscordEmbedBuilder.EmbedFooter
-                {
-                    Text = "La City - A sua trilha sonora de sempre!"
-                },
+                Footer = new DiscordEmbedBuilder.EmbedFooter { Text = "La City - A sua trilha sonora de sempre!" },
                 Timestamp = DateTime.UtcNow
             };
 
@@ -600,20 +723,14 @@ namespace MusicCommands
             {
                 TrackStartTime = trackStartTime,
                 CurrentIndex = 0,
-                CurrentMessage = message
+                CurrentMessage = message,
+                Tracks = new List<QueuedTrack>()
             };
-            newPlaylist.Tracks.Add(new QueuedTrack
-            {
-                Track = fetchedTracks.First(),
-                AddedBy = ctx.User.Id
-            });
+
+            newPlaylist.Tracks.Add(new QueuedTrack { Track = fetchedTracks.First(), AddedBy = ctx.User.Id });
             foreach (var track in fetchedTracks.Skip(1))
             {
-                newPlaylist.Tracks.Add(new QueuedTrack
-                {
-                    Track = track,
-                    AddedBy = ctx.User.Id
-                });
+                newPlaylist.Tracks.Add(new QueuedTrack { Track = track, AddedBy = ctx.User.Id });
             }
             _playlists[ctx.Guild.Id] = newPlaylist;
 
