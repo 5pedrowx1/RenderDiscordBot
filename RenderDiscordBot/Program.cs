@@ -2,12 +2,13 @@ using DSharpPlus;
 using DSharpPlus.CommandsNext;
 using DSharpPlus.Interactivity.Extensions;
 using DSharpPlus.EventArgs;
-using Google.Cloud.Firestore;
 using DSharpPlus.Lavalink;
 using DSharpPlus.Net;
+using DSharpPlus.Entities;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Logging;
 using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.CommandsNext.Exceptions;
-using DSharpPlus.Entities;
 
 namespace RenderDiscordBot
 {
@@ -15,6 +16,7 @@ namespace RenderDiscordBot
     {
         public static DiscordClient? Client { get; private set; }
         private static Timer? _lavalinkMonitorTimer;
+
         static async Task Main(string[] args)
         {
             FirebaseService.InitializeFirebase();
@@ -26,11 +28,10 @@ namespace RenderDiscordBot
                 Token = botConfig.Token,
                 TokenType = TokenType.Bot,
                 AutoReconnect = true,
-                MinimumLogLevel = Microsoft.Extensions.Logging.LogLevel.Debug
+                MinimumLogLevel = LogLevel.Debug
             });
 
             var lavalink = Client.UseLavalink();
-
             var endpoint = new ConnectionEndpoint
             {
                 Hostname = "lava-all.ajieblogs.eu.org",
@@ -53,7 +54,6 @@ namespace RenderDiscordBot
             };
 
             var commands = Client.UseCommandsNext(commandsConfig);
-
             commands.RegisterCommands<MusicCommands.MusicCommands>();
             commands.CommandErrored += OnCommandError;
 
@@ -67,7 +67,10 @@ namespace RenderDiscordBot
 
             await Client.ConnectAsync();
             await Client.GetLavalink().ConnectAsync(lavalinkConfig);
+
             _lavalinkMonitorTimer = new Timer(async _ => await CheckLavalinkConnection(), null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+
+            _ = StartHttpServer();
             await Task.Delay(-1);
         }
 
@@ -118,9 +121,11 @@ namespace RenderDiscordBot
 
                 foreach (var check in castedException.FailedChecks)
                 {
-                    var cooldown = (CooldownAttribute)check;
-                    TimeSpan timeLeft = cooldown.GetRemainingCooldown(e.Context);
-                    cooldownTimer = timeLeft.ToString(@"hh\:mm\:ss");
+                    if (check is CooldownAttribute cooldown)
+                    {
+                        TimeSpan timeLeft = cooldown.GetRemainingCooldown(e.Context);
+                        cooldownTimer = timeLeft.ToString(@"hh\:mm\:ss");
+                    }
                 }
 
                 var cooldownMessage = new DiscordEmbedBuilder()
@@ -144,7 +149,7 @@ namespace RenderDiscordBot
         {
             if (e.Message.Content.StartsWith("/"))
             {
-                string logContent = $"Comando recebido de {e.Guild.Name}: {e.Message.Content}";
+                string logContent = $"Comando recebido de {(e.Guild != null ? e.Guild.Name : "DM")}: {e.Message.Content}";
                 Console.WriteLine(logContent);
                 await LogEvent(logContent, "Command");
             }
@@ -154,7 +159,7 @@ namespace RenderDiscordBot
         {
             try
             {
-                DocumentReference docRef = FirebaseService.FirestoreDb.Collection("bot_logs").Document();
+                var docRef = FirebaseService.FirestoreDb.Collection("bot_logs").Document();
                 var logData = new
                 {
                     Message = message,
@@ -166,6 +171,29 @@ namespace RenderDiscordBot
             catch (Exception ex)
             {
                 Console.WriteLine($"Erro ao gravar log: {ex.Message}");
+            }
+        }
+
+        private static async Task StartHttpServer()
+        {
+            try
+            {
+
+                string portEnv = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+                if (!int.TryParse(portEnv, out int port))
+                    port = 8080;
+
+                var builder = WebApplication.CreateBuilder();
+                var app = builder.Build();
+
+                app.MapGet("/", () => "Bot funcionando!");
+
+                Console.WriteLine($"Servidor HTTP iniciado na porta: {port}");
+                await app.RunAsync($"http://0.0.0.0:{port}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erro ao iniciar o servidor HTTP: " + ex.Message);
             }
         }
     }
