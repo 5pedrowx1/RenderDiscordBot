@@ -2,6 +2,9 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
+# Copie o arquivo global.json (certifique-se de que ele está na raiz)
+COPY global.json ./
+
 # Copia o arquivo .csproj para restaurar as dependências
 COPY ["RenderDiscordBot/RenderDiscordBot.csproj", "RenderDiscordBot/"]
 
@@ -22,7 +25,7 @@ WORKDIR /app
 # Copia os arquivos publicados no estágio de build para a imagem final
 COPY --from=build /app/publish .
 
-# Copia o arquivo serviceAccountKey.enc da pasta RenderDiscordBot para /app
+# Opcional: copie outros arquivos necessários, por exemplo, um arquivo de chave
 COPY RenderDiscordBot/serviceAccountKey.enc /app/serviceAccountKey.enc
 
 # Define o comando de entrada para iniciar a aplicação
