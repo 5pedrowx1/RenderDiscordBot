@@ -1,4 +1,4 @@
-﻿using DSharpPlus;
+using DSharpPlus;
 using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.Entities;
@@ -6,12 +6,11 @@ using DSharpPlus.Lavalink;
 using DSharpPlus.Interactivity.Extensions;
 using SpotifyAPI.Web;
 
-namespace MusicCommands
+namespace RenderDiscordBot
 {
     public class MusicCommands : BaseCommandModule
     {
         private static Config _config = null!;
-        private bool _isAdvancing = false;
         private static readonly Dictionary<ulong, PlaylistState> _playlists = [];
         private static readonly Dictionary<ulong, CancellationTokenSource> _interactionTokens = [];
 
@@ -32,8 +31,7 @@ namespace MusicCommands
 
         private static async Task EnsureConfigLoadedAsync()
         {
-            if (_config is null)
-                _config = await ConfigService.GetConfigFromFirestoreAsync();
+            _config ??= await ConfigService.GetConfigFromFirestoreAsync();
         }
 
         private async Task<bool> ValidateCommandUsage(CommandContext ctx)
@@ -425,7 +423,7 @@ namespace MusicCommands
             for (int i = start; i < Math.Min(playlist.Tracks.Count, start + maxToShow); i++)
             {
                 var queuedTrack = playlist.Tracks[i];
-                string status = (i == playlist.CurrentIndex) ? "▶️ **Tocando agora**" : $"{i + 1}.";
+                string status = i == playlist.CurrentIndex ? "▶️ **Tocando agora**" : $"{i + 1}.";
                 string duration = $"⏳ {queuedTrack.Track.Length:mm\\:ss}";
 
                 queueEmbed.AddField(status, $"[{queuedTrack.Track.Title}]({queuedTrack.Track.Uri}) - {queuedTrack.Track.Author} {duration}", false);
@@ -475,7 +473,7 @@ namespace MusicCommands
             var spotify = new SpotifyClient(config.WithToken(tokenResponse.AccessToken));
 
             var playlist = await spotify.Playlists.Get(playlistId);
-            if (playlist.Tracks.Total == 0)
+            if (playlist.Tracks!.Total == 0)
             {
                 await ctx.Channel.SendMessageAsync("Não foi encontrada nenhuma faixa na playlist do Spotify.");
                 return;
@@ -508,7 +506,7 @@ namespace MusicCommands
                 return;
             }
 
-            if (playlistTracks.Count > 20)
+            if (playlistTracks!.Count > 20)
             {
                 var progressEmbed = new DiscordEmbedBuilder
                 {
@@ -610,7 +608,7 @@ namespace MusicCommands
                     {
                         TrackStartTime = DateTime.UtcNow,
                         CurrentIndex = -1,
-                        Tracks = new List<QueuedTrack>()
+                        Tracks = []
                     };
                 }
                 foreach (var track in fetchedTracks)
@@ -724,7 +722,7 @@ namespace MusicCommands
                 TrackStartTime = trackStartTime,
                 CurrentIndex = 0,
                 CurrentMessage = message,
-                Tracks = new List<QueuedTrack>()
+                Tracks = []
             };
 
             newPlaylist.Tracks.Add(new QueuedTrack { Track = fetchedTracks.First(), AddedBy = ctx.User.Id });
