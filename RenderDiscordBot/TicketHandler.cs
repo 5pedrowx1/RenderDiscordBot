@@ -162,7 +162,7 @@ namespace RenderDiscordBot
             };
 
             embed.AddField("📌 Quando abrir um ticket?",
-                "- Problemas técnicos\n- Denúncias\n- Dúvidas gerais\n- Sugestões");
+                "- Problemas técnicos\n- Denúncias\n- Dúvidas gerais");
 
             embed.WithFooter($"Comando executado por {ctx.User.Username}", ctx.User.AvatarUrl ?? ctx.User.DefaultAvatarUrl);
 
