@@ -1,34 +1,38 @@
 using DSharpPlus;
 using DSharpPlus.CommandsNext;
-using DSharpPlus.Interactivity.Extensions;
-using DSharpPlus.EventArgs;
-using DSharpPlus.Lavalink;
-using DSharpPlus.Net;
-using DSharpPlus.Entities;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.Logging;
 using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.CommandsNext.Exceptions;
+using DSharpPlus.Entities;
+using DSharpPlus.EventArgs;
+using DSharpPlus.Interactivity.Extensions;
+using DSharpPlus.Lavalink;
+using DSharpPlus.Net;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace RenderDiscordBot
 {
     public sealed class Program
     {
         public static DiscordClient? Client { get; private set; }
+        private static Config? BotConfig;
         private static Timer? _lavalinkMonitorTimer;
 
         static async Task Main(string[] args)
         {
-            FirebaseService.InitializeFirebase();
-            Config botConfig = await ConfigService.GetConfigFromFirestoreAsync();
+            string firebaseEncryptionKey = Environment.GetEnvironmentVariable("FIREBASE_ENCRYPTION_KEY")
+                ?? throw new Exception("Chave de criptografia para o Firebase não configurada.");
+            FirebaseService.InitializeFirebase(firebaseEncryptionKey);
+            BotConfig = await ConfigService.GetConfigFromFirestoreAsync();
 
             Client = new DiscordClient(new DiscordConfiguration()
             {
                 Intents = DiscordIntents.All,
-                Token = botConfig.Token,
+                Token = BotConfig.Token,
                 TokenType = TokenType.Bot,
                 AutoReconnect = true,
-                MinimumLogLevel = LogLevel.Debug
+                MinimumLogLevel = LogLevel.None
             });
 
             var lavalink = Client.UseLavalink();
@@ -38,7 +42,6 @@ namespace RenderDiscordBot
                 Port = 443,
                 Secured = true
             };
-
             var lavalinkConfig = new LavalinkConfiguration
             {
                 Password = "https://dsc.gg/ajidevserver",
@@ -46,15 +49,25 @@ namespace RenderDiscordBot
                 SocketEndpoint = endpoint
             };
 
+            var services = new ServiceCollection();
+            services.AddSingleton(Client);
+            services.AddSingleton(BotConfig);
+            services.AddSingleton<TicketHandler>();
+            services.AddSingleton<VoiceCreateManager>();
+            var serviceProvider = services.BuildServiceProvider();
+
             var commandsConfig = new CommandsNextConfiguration
             {
-                StringPrefixes = new[] { botConfig.CommandPrefix },
-                EnableDms = botConfig.EnableDms,
-                EnableMentionPrefix = botConfig.EnableMentionPrefix,
+                StringPrefixes = [BotConfig.CommandPrefix],
+                EnableDms = BotConfig.EnableDms,
+                EnableMentionPrefix = BotConfig.EnableMentionPrefix,
+                Services = serviceProvider
             };
 
             var commands = Client.UseCommandsNext(commandsConfig);
-            commands.RegisterCommands<MusicCommands.MusicCommands>();
+            commands.RegisterCommands<TicketHandler>();
+            commands.RegisterCommands<MusicCommands>();
+            commands.RegisterCommands<VoiceCreateManager>();
             commands.CommandErrored += OnCommandError;
 
             Client.UseInteractivity(new DSharpPlus.Interactivity.InteractivityConfiguration
@@ -67,9 +80,7 @@ namespace RenderDiscordBot
 
             await Client.ConnectAsync();
             await Client.GetLavalink().ConnectAsync(lavalinkConfig);
-
             _lavalinkMonitorTimer = new Timer(async _ => await CheckLavalinkConnection(), null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
-
             _ = StartHttpServer();
             await Task.Delay(-1);
         }
@@ -79,7 +90,6 @@ namespace RenderDiscordBot
             try
             {
                 if (Client == null) return;
-
                 var lavalink = Client.GetLavalink();
                 if (!lavalink.ConnectedNodes.Any())
                 {
@@ -91,7 +101,6 @@ namespace RenderDiscordBot
                         Port = 443,
                         Secured = true
                     };
-
                     var lavalinkConfig = new LavalinkConfiguration
                     {
                         Password = "https://dsc.gg/ajidevserver",
@@ -118,7 +127,6 @@ namespace RenderDiscordBot
             if (e.Exception is ChecksFailedException castedException)
             {
                 string cooldownTimer = string.Empty;
-
                 foreach (var check in castedException.FailedChecks)
                 {
                     if (check is CooldownAttribute cooldown)
@@ -127,14 +135,12 @@ namespace RenderDiscordBot
                         cooldownTimer = timeLeft.ToString(@"hh\:mm\:ss");
                     }
                 }
-
                 var cooldownMessage = new DiscordEmbedBuilder()
                 {
                     Title = "Aguarde o término do tempo de espera",
                     Description = "Tempo restante: " + cooldownTimer,
                     Color = DiscordColor.Red
                 };
-
                 await e.Context.Channel.SendMessageAsync(embed: cooldownMessage);
             }
         }
@@ -147,7 +153,7 @@ namespace RenderDiscordBot
 
         private static async Task OnMessageCreated(DiscordClient sender, MessageCreateEventArgs e)
         {
-            if (e.Message.Content.StartsWith("/"))
+            if (e.Message.Content.StartsWith(BotConfig!.CommandPrefix))
             {
                 string logContent = $"Comando recebido de {(e.Guild != null ? e.Guild.Name : "DM")}: {e.Message.Content}";
                 Console.WriteLine(logContent);
@@ -159,7 +165,7 @@ namespace RenderDiscordBot
         {
             try
             {
-                var docRef = FirebaseService.FirestoreDb.Collection("bot_logs").Document();
+                var docRef = FirebaseService.FirestoreDb!.Collection("bot_logs").Document();
                 var logData = new
                 {
                     Message = message,
@@ -178,16 +184,12 @@ namespace RenderDiscordBot
         {
             try
             {
-
                 string portEnv = Environment.GetEnvironmentVariable("PORT") ?? "8080";
                 if (!int.TryParse(portEnv, out int port))
                     port = 8080;
-
                 var builder = WebApplication.CreateBuilder();
                 var app = builder.Build();
-
                 app.MapGet("/", () => "Bot funcionando!");
-
                 Console.WriteLine($"Servidor HTTP iniciado na porta: {port}");
                 await app.RunAsync($"http://0.0.0.0:{port}");
             }
