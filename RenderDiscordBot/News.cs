@@ -5,6 +5,7 @@ using Newtonsoft.Json.Linq;
 using System.Data;
 using System.Text.RegularExpressions;
 /*
+.
 namespace RenderDiscordBot
 {
     class News : BaseCommandModule
