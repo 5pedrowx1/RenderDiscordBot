@@ -15,6 +15,8 @@ namespace RenderDiscordBot
         public ulong ServerId { get; set; }
         public ulong VoiceCreateId { get; set; }
         public ulong CategoryVoiceId { get; set; }
+        public ulong MiniRPGChannelId { get; set; }
+        public ulong MuteRoleId { get; set; }
         public string CommandPrefix { get; set; } = "!";
         public bool EnableDms { get; set; } = false;
         public bool EnableMentionPrefix { get; set; } = true;
@@ -68,6 +70,10 @@ namespace RenderDiscordBot
                 throw new Exception("VoiceCreateId não encontrado na configuração");
             if (!data.TryGetValue("CategoryVoiceId", out var CategoryVoiceId) || CategoryVoiceId == null)
                 throw new Exception("CategoryVoiceId não encontrado na configuração");
+            if (!data.TryGetValue("MiniRPGChannelId", out var MiniRPGChannelId) || MiniRPGChannelId == null)
+                throw new Exception("MiniRPGChannelId não encontrado na configuração");
+            if (!data.TryGetValue("MuteRoleId", out var MuteRoleId) || MuteRoleId == null)
+                throw new Exception("MuteRoleId não encontrado na configuração");
 
             var config = new Config
             {
@@ -82,6 +88,8 @@ namespace RenderDiscordBot
                 AdminRoleId = Convert.ToUInt64(AdminRoleId.ToString()),
                 ServerId = Convert.ToUInt64(ServerId.ToString()),
                 VoiceCreateId = Convert.ToUInt64(VoiceCreateId.ToString()),
+                MiniRPGChannelId = Convert.ToUInt64(MiniRPGChannelId.ToString()),
+                MuteRoleId = Convert.ToUInt64(MuteRoleId.ToString()),
                 CommandPrefix = CommandPrefix.ToString()!,
                 EnableDms = Convert.ToBoolean(EnableDms),
                 EnableMentionPrefix = Convert.ToBoolean(EnableMentionPrefix),
