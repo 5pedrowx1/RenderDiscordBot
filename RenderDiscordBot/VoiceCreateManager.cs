@@ -200,12 +200,19 @@ namespace RenderDiscordBot
         [Command("criarcanal")]
         public async Task CriarCanalTeste(CommandContext ctx)
         {
+
             if (_config.AdminRoleId != 0)
             {
                 var member = await ctx.Guild.GetMemberAsync(ctx.User.Id);
                 if (!member.Roles.Any(role => role.Id == _config.AdminRoleId))
                 {
-                    //await ctx.RespondAsync("❌ Você precisa ser um administrador para usar esse comando.");
+                    var erroPermissao = new DiscordEmbedBuilder
+                    {
+                        Title = "❌ Permissão negada",
+                        Description = "Você precisa ser um administrador para usar esse comando.",
+                        Color = DiscordColor.Red
+                    };
+                    await ctx.Channel.SendMessageAsync(embed: erroPermissao);
                     return;
                 }
             }
