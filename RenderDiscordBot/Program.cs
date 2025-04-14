@@ -55,7 +55,6 @@ namespace RenderDiscordBot
             services.AddSingleton<TicketHandler>();
             services.AddSingleton<VoiceCreateManager>();
             services.AddSingleton<BotFuns>();
-            services.AddSingleton<MiniRPG>();
             services.AddSingleton<AdmCommands>();
             var serviceProvider = services.BuildServiceProvider();
 
@@ -72,7 +71,6 @@ namespace RenderDiscordBot
             commands.RegisterCommands<MusicCommands>();
             commands.RegisterCommands<VoiceCreateManager>();
             commands.RegisterCommands<BotFuns>();
-            commands.RegisterCommands<MiniRPG>();
             commands.RegisterCommands<AdmCommands>();
             commands.CommandErrored += OnCommandError;
 
