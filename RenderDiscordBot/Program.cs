@@ -54,6 +54,9 @@ namespace RenderDiscordBot
             services.AddSingleton(BotConfig);
             services.AddSingleton<TicketHandler>();
             services.AddSingleton<VoiceCreateManager>();
+            services.AddSingleton<BotFuns>();
+            services.AddSingleton<MiniRPG>();
+            services.AddSingleton<AdmCommands>();
             var serviceProvider = services.BuildServiceProvider();
 
             var commandsConfig = new CommandsNextConfiguration
@@ -68,6 +71,9 @@ namespace RenderDiscordBot
             commands.RegisterCommands<TicketHandler>();
             commands.RegisterCommands<MusicCommands>();
             commands.RegisterCommands<VoiceCreateManager>();
+            commands.RegisterCommands<BotFuns>();
+            commands.RegisterCommands<MiniRPG>();
+            commands.RegisterCommands<AdmCommands>();
             commands.CommandErrored += OnCommandError;
 
             Client.UseInteractivity(new DSharpPlus.Interactivity.InteractivityConfiguration
