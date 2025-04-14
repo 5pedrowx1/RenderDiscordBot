@@ -132,12 +132,19 @@ namespace RenderDiscordBot
         {
             await ctx.Message.DeleteAsync();
 
+
             if (_config.AdminRoleId != 0)
             {
                 var member = await ctx.Guild.GetMemberAsync(ctx.User.Id);
                 if (!member.Roles.Any(role => role.Id == _config.AdminRoleId))
                 {
-                    await ctx.RespondAsync("❌ Você precisa ser um administrador para usar esse comando.");
+                    var erroPermissao = new DiscordEmbedBuilder
+                    {
+                        Title = "❌ Permissão negada",
+                        Description = "Você precisa ser um administrador para usar esse comando.",
+                        Color = DiscordColor.Red
+                    };
+                    await ctx.Channel.SendMessageAsync(embed: erroPermissao);
                     return;
                 }
             }
@@ -166,25 +173,6 @@ namespace RenderDiscordBot
                 .AddComponents(button);
 
             await ctx.Channel.SendMessageAsync(messageBuilder);
-        }
-
-        public async Task<bool> BlockChannel(DiscordMessage message)
-        {
-            if (message.Channel.Id != _config.ComandsChannelId)
-            {
-                Console.WriteLine($"Comando bloqueado! Canal incorreto: {message.Channel.Name} (ID: {message.Channel.Id})");
-
-                var embed = new DiscordEmbedBuilder
-                {
-                    Title = "Canal de Comandos Inválido",
-                    Description = "Por favor, utilize o canal de comandos designado para interagir com o bot.",
-                    Color = DiscordColor.Red
-                };
-
-                await message.Channel.SendMessageAsync(embed: embed);
-                return true;
-            }
-            return false;
         }
     }
 }
