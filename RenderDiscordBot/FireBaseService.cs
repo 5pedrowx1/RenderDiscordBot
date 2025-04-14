@@ -1,4 +1,4 @@
-﻿using FirebaseAdmin;
+using FirebaseAdmin;
 using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Firestore;
 using System.Text;
@@ -10,7 +10,7 @@ namespace RenderDiscordBot
         private static bool _initialized = false;
         public static FirestoreDb? FirestoreDb { get; private set; }
 
-        public static void InitializeFirebase()
+        public static void InitializeFirebase(string encryptionKey)
         {
             if (_initialized)
                 return;
@@ -20,7 +20,7 @@ namespace RenderDiscordBot
             if (!File.Exists(encryptedPath))
                 throw new FileNotFoundException("Chave criptografada do Firebase não encontrada!", encryptedPath);
 
-            string decryptedJson = SecureFileManager.DecryptJson(encryptedPath);
+            string decryptedJson = SecureFileManager.DecryptJson(encryptedPath, encryptionKey);
 
             using var stream = new MemoryStream(Encoding.UTF8.GetBytes(decryptedJson));
             GoogleCredential credential = GoogleCredential.FromStream(stream);
