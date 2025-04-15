@@ -28,8 +28,10 @@ namespace RenderDiscordBot
         {
             var interaction = e.Interaction;
 
-            if (interaction.Data.CustomId == "open_ticket" && interaction.User is DiscordMember user)
+            if (interaction.Data.CustomId == "open_ticket_type" && interaction.User is DiscordMember user)
             {
+                var selectedOption = interaction.Data.Values.FirstOrDefault();
+
                 var guild = e.Guild;
                 var category = GetTicketCategory(guild);
 
@@ -58,7 +60,7 @@ namespace RenderDiscordBot
                         var embed = new DiscordEmbedBuilder
                         {
                             Title = "🎟️ Ticket de Suporte Aberto",
-                            Description = $"Olá {user.Mention}! 👋\n\nUm membro da nossa equipe de suporte irá te atender em breve.\n\n🔒 **Apenas um Administrador pode fechar este ticket.**",
+                            Description = $"Olá {user.Mention}! 👋\n\nUm membro da nossa equipe de suporte irá te atender em breve.\n\nTipo de Ticket: {selectedOption}\n🔒 **Apenas um Administrador pode fechar este ticket.**",
                             Color = DiscordColor.Azure,
                             Timestamp = DateTime.UtcNow
                         };
@@ -132,7 +134,6 @@ namespace RenderDiscordBot
         {
             await ctx.Message.DeleteAsync();
 
-
             if (_config.AdminRoleId != 0)
             {
                 var member = await ctx.Guild.GetMemberAsync(ctx.User.Id);
@@ -152,7 +153,7 @@ namespace RenderDiscordBot
             var embed = new DiscordEmbedBuilder
             {
                 Title = "📩 Suporte Personalizado",
-                Description = "Se você precisa de ajuda, clique no botão abaixo para abrir um ticket com a nossa equipe de suporte.\n\n🔒 **Seu ticket será visível apenas para você e a staff.**",
+                Description = "Se você precisa de ajuda, escolha uma das opções abaixo para abrir um ticket com a nossa equipe de suporte.\n\n🔒 **Seu ticket será visível apenas para você e a staff.**",
                 Color = DiscordColor.Azure,
                 Thumbnail = new DiscordEmbedBuilder.EmbedThumbnail
                 {
@@ -166,11 +167,21 @@ namespace RenderDiscordBot
 
             embed.WithFooter($"Comando executado por {ctx.User.Username}", ctx.User.AvatarUrl ?? ctx.User.DefaultAvatarUrl);
 
-            var button = new DiscordButtonComponent(ButtonStyle.Primary, "open_ticket", "🔓 Abrir Ticket");
+            var selectComponent = new DiscordSelectComponent(
+                "open_ticket_type",
+                "Escolha o tipo de ticket",
+                new List<DiscordSelectComponentOption>
+                {
+                    new("Problemas técnicos", "Problemas Tecnicos"),
+                    new("Denúncias", "Denuncias"),
+                    new("Dúvidas gerais", "Duvidas Gerais")
+                },
+                false, 1, 1
+            );
 
             var messageBuilder = new DiscordMessageBuilder()
                 .AddEmbed(embed)
-                .AddComponents(button);
+                .AddComponents(selectComponent);
 
             await ctx.Channel.SendMessageAsync(messageBuilder);
         }
