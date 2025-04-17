@@ -1,14 +1,12 @@
-using DSharpPlus.Entities;
-using DSharpPlus.CommandsNext;
 using DSharpPlus;
+using DSharpPlus.CommandsNext;
+using DSharpPlus.Entities;
 using Newtonsoft.Json.Linq;
-using System.Data;
 using System.Text.RegularExpressions;
-/*
-.
+
 namespace RenderDiscordBot
 {
-    class News : BaseCommandModule
+    public class News : BaseCommandModule
     {
         private readonly DiscordClient _client;
         private readonly Config _config;
@@ -17,28 +15,40 @@ namespace RenderDiscordBot
         private string _lastStreamId;
 
         private const string TwitchClientId = "xbknm3de1noh1ppl94x7j183noqc77";
-        private const string TwitchAccessToken = "vadlb5jy6xptyfjzkeof29uumr1i3w";
+        private const string TwitchAccessToken = "an8q7ury7incx8czyb33fc0ce6icsc";
 
         public News(DiscordClient client, Config config)
         {
             _client = client;
             _config = config;
             _httpClient = new HttpClient();
-            _timer = new System.Timers.Timer(60000);
-            _timer.Elapsed += async (sender, e) => await CheckLiveStatus();
+
+            _timer = new System.Timers.Timer(30000);
+            _timer.Elapsed += async (sender, e) =>
+            {
+                Console.WriteLine($"[{DateTime.Now}] Iniciando verificação da live...");
+                await CheckLiveStatus();
+            };
             _timer.Start();
+
+            Console.WriteLine($"[{DateTime.Now}] Módulo News iniciado com timer de 30 segundos.");
         }
 
-        private string GetStreamerName()
+        private string? GetStreamerName()
         {
             if (string.IsNullOrEmpty(_config.UrlLive))
+            {
+                Console.WriteLine("URL da live não configurada.");
                 return null;
+            }
 
             var match = Regex.Match(_config.UrlLive, @"twitch\.tv\/([a-zA-Z0-9_]+)");
-            return match.Success ? match.Groups[1].Value : null;
+            string streamerName = match.Success ? match.Groups[1].Value : null;
+            Console.WriteLine($"Streamer obtido: {streamerName}");
+            return streamerName;
         }
 
-        private async Task<string> GetStreamerProfileImageUrl(string streamerName)
+        private async Task<string?> GetStreamerProfileImageUrl(string streamerName)
         {
             try
             {
@@ -47,10 +57,12 @@ namespace RenderDiscordBot
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {TwitchAccessToken}");
 
                 string url = $"https://api.twitch.tv/helix/users?login={streamerName}";
+                Console.WriteLine($"Obtendo imagem de perfil do streamer através da URL: {url}");
                 var response = await _httpClient.GetStringAsync(url);
                 var json = JObject.Parse(response);
-
-                return json["data"]?.First?["profile_image_url"]?.ToString();
+                string? profileImageUrl = json["data"]?.First?["profile_image_url"]?.ToString();
+                Console.WriteLine($"Imagem de perfil obtida: {profileImageUrl}");
+                return profileImageUrl;
             }
             catch (Exception ex)
             {
@@ -59,7 +71,7 @@ namespace RenderDiscordBot
             }
         }
 
-        private async Task<string> GetStreamDescription(string streamerName)
+        private async Task<string?> GetStreamDescription(string streamerName)
         {
             try
             {
@@ -68,10 +80,12 @@ namespace RenderDiscordBot
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {TwitchAccessToken}");
 
                 string url = $"https://api.twitch.tv/helix/streams?user_login={streamerName}";
+                Console.WriteLine($"Obtendo descrição da live através da URL: {url}");
                 var response = await _httpClient.GetStringAsync(url);
                 var json = JObject.Parse(response);
-
-                return json["data"]?.First?["title"]?.ToString();
+                string? streamDescription = json["data"]?.First?["title"]?.ToString();
+                Console.WriteLine($"Descrição da live: {streamDescription}");
+                return streamDescription;
             }
             catch (Exception ex)
             {
@@ -80,62 +94,7 @@ namespace RenderDiscordBot
             }
         }
 
-        private List<(string Text, string Type)> GetFunnyStatuses()
-        {
-            string streamerName = GetStreamerName();
-            if (string.IsNullOrEmpty(streamerName)) return new List<(string, string)>();
-
-            return new List<(string, string)>
-            {
-                ($"📢 Assistindo {streamerName} ao vivo", "Streaming")
-            };
-        }
-
-        public async Task SendNewsEmbed(string description, string thumbnailUrl = null)
-        {
-            if (!(_client.GetChannel(_config.NewsChannelId) is SocketTextChannel channel))
-            {
-                Logs.Error($"Canal com ID {_config.NewsChannelId} não encontrado.");
-                return;
-            }
-
-            var streamerName = GetStreamerName();
-            var profileImageUrl = await GetStreamerProfileImageUrl(streamerName);
-            string UrlImage = "https://i.imgur.com/BAr5fnh.png";
-            var embed = new EmbedBuilder()
-                .WithTitle(streamerName)
-                .WithDescription($"{description}\n\n")
-                .WithColor(new Discord.Color(82, 60, 124))
-                .WithThumbnailUrl(profileImageUrl)
-                .WithImageUrl(thumbnailUrl ?? $"https://static-cdn.jtvnw.net/previews-ttv/live_user_{streamerName}-1920x1080.jpg")
-                .WithFooter("Twitch", UrlImage)
-                .WithCurrentTimestamp()
-                .Build();
-
-            var components = new ComponentBuilder()
-                .WithButton("Assistir ao Vivo", null, ButtonStyle.Link, url: $"{_config.UrlLive}");
-
-            await channel.SendMessageAsync(embed: embed, components: components.Build());
-        }
-
-        public async Task SendLiveStartNotification()
-        {
-            string streamerName = GetStreamerName();
-            if (string.IsNullOrEmpty(streamerName)) return;
-
-            string title = $"{streamerName} está ao vivo!";
-            string description = await GetStreamDescription(streamerName);
-            if (string.IsNullOrEmpty(description)) return;
-
-            string streamId = await GetStreamId(streamerName);
-            if (streamId == _lastStreamId) return;
-
-            _lastStreamId = streamId;
-
-            await SendNewsEmbed(title, description);
-        }
-
-        private async Task<string> GetStreamId(string streamerName)
+        private async Task<string?> GetStreamId(string streamerName)
         {
             try
             {
@@ -144,10 +103,12 @@ namespace RenderDiscordBot
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {TwitchAccessToken}");
 
                 string url = $"https://api.twitch.tv/helix/streams?user_login={streamerName}";
+                Console.WriteLine($"Obtendo ID da live pela URL: {url}");
                 var response = await _httpClient.GetStringAsync(url);
                 var json = JObject.Parse(response);
-
-                return json["data"]?.First?["id"]?.ToString();
+                string? streamId = json["data"]?.First?["id"]?.ToString();
+                Console.WriteLine($"ID da live obtido: {streamId}");
+                return streamId;
             }
             catch (Exception ex)
             {
@@ -159,7 +120,11 @@ namespace RenderDiscordBot
         private async Task<bool> IsStreamerLive()
         {
             string streamerName = GetStreamerName();
-            if (string.IsNullOrEmpty(streamerName)) return false;
+            if (string.IsNullOrEmpty(streamerName))
+            {
+                Console.WriteLine("Streamer não configurado.");
+                return false;
+            }
 
             try
             {
@@ -168,44 +133,160 @@ namespace RenderDiscordBot
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {TwitchAccessToken}");
 
                 string url = $"https://api.twitch.tv/helix/streams?user_login={streamerName}";
+                Console.WriteLine($"Verificando se o streamer está ao vivo na URL: {url}");
                 var response = await _httpClient.GetStringAsync(url);
                 var json = JObject.Parse(response);
-
-                return json["data"].HasValues;
+                bool isLive = json["data"].HasValues;
+                Console.WriteLine(isLive ? "Streamer está ao vivo." : "Streamer não está ao vivo.");
+                return isLive;
             }
             catch (Exception ex)
             {
-                Logs.Error($"Erro ao verificar live na Twitch: {ex.Message}");
+                Console.WriteLine($"Erro ao verificar live na Twitch: {ex.Message}");
                 return false;
             }
         }
 
+        private List<(string Text, string Type)> GetFunnyStatuses()
+        {
+            string streamerName = GetStreamerName();
+            if (string.IsNullOrEmpty(streamerName))
+            {
+                return new List<(string, string)>();
+            }
+
+            return new List<(string, string)>
+            {
+                ($"📢 Assistindo {streamerName} ao vivo", "Streaming")
+            };
+        }
+
+        public async Task SendNewsEmbed(string description, string? thumbnailUrl = null)
+        {
+            try
+            {
+                var channel = await _client.GetChannelAsync(_config.NewsChannelId);
+                if (channel == null)
+                {
+                    Console.WriteLine($"Canal com ID {_config.NewsChannelId} não encontrado.");
+                    return;
+                }
+                Console.WriteLine($"Canal encontrado: {channel.Name}");
+
+                var streamerName = GetStreamerName();
+                var profileImageUrl = await GetStreamerProfileImageUrl(streamerName);
+
+                var imageUrl = thumbnailUrl ?? $"https://static-cdn.jtvnw.net/previews-ttv/live_user_{streamerName}-1920x1080.jpg";
+                if (!Uri.IsWellFormedUriString(imageUrl, UriKind.Absolute))
+                {
+                    Console.WriteLine($"URL inválida detectada: {imageUrl}");
+                    imageUrl = null;
+                }
+
+                var embed = new DiscordEmbedBuilder()
+                    .WithTitle($"{streamerName} está ao vivo!")
+                    .WithDescription($"{description}\n\nClique no botão abaixo para assistir ao vivo.")
+                    .WithColor(new DiscordColor(82, 60, 124))
+                    .WithThumbnail(profileImageUrl)
+                    .WithFooter("Twitch", "https://i.imgur.com/BAr5fnh.png")
+                    .WithTimestamp(DateTimeOffset.UtcNow);
+
+                if (imageUrl != null)
+                    embed.WithImageUrl(imageUrl);
+
+                var button = new DiscordLinkButtonComponent(_config.UrlLive, "🎥 Assistir ao Vivo");
+
+                var builder = new DiscordMessageBuilder()
+                    .AddEmbed(embed.Build())
+                    .AddComponents(button);
+
+                Console.WriteLine("Enviando embed com botão para o canal: " + channel.Name);
+                await channel.SendMessageAsync(builder);
+                Console.WriteLine("Embed enviado com sucesso.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro ao enviar embed: {ex.Message}");
+            }
+        }
+
+        public async Task SendLiveStartNotification()
+        {
+            string streamerName = GetStreamerName();
+            if (string.IsNullOrEmpty(streamerName))
+            {
+                Console.WriteLine("Streamer não configurado para notificação.");
+                return;
+            }
+
+            string title = $"{streamerName} está ao vivo!";
+            string? description = await GetStreamDescription(streamerName);
+            if (string.IsNullOrEmpty(description))
+            {
+                Console.WriteLine("Descrição da live não disponível.");
+                return;
+            }
+
+            string? streamId = await GetStreamId(streamerName);
+            if (streamId == _lastStreamId)
+            {
+                Console.WriteLine("ID da live é o mesmo da última notificação. Ignorando...");
+                return;
+            }
+
+            _lastStreamId = streamId;
+            Console.WriteLine("Enviando notificação de live...");
+            await SendNewsEmbed(title, description);
+        }
+
         private async Task UpdateStatus()
         {
-            if (_client.ConnectionState == ConnectionState.Connected)
+            var statuses = GetFunnyStatuses();
+            if (statuses.Count == 0)
             {
-                var statuses = GetFunnyStatuses();
-                if (statuses.Count == 0) return;
+                Console.WriteLine("Nenhum status divertido disponível.");
+                return;
+            }
 
-                var status = statuses[new Random().Next(statuses.Count)];
-                var text = status.Text;
-                var type = status.Type;
+            var random = new Random();
+            var status = statuses[random.Next(statuses.Count)];
+            var text = status.Text;
+            var type = status.Type;
 
-                if (type == "Streaming")
+            if (type == "Streaming")
+            {
+                Console.WriteLine("Atualizando status do bot para Streaming...");
+                var activity = new DiscordActivity
                 {
-                    await _client.SetGameAsync(text, _config.UrlLive, ActivityType.Streaming);
-                }
+                    Name = text,
+                    ActivityType = ActivityType.Streaming,
+                    StreamUrl = _config.UrlLive
+                };
+
+                await _client.UpdateStatusAsync(activity);
+                Console.WriteLine("Status atualizado com sucesso.");
             }
         }
 
         private async Task CheckLiveStatus()
         {
-            if (await IsStreamerLive())
+            try
             {
-                await SendLiveStartNotification();
-                await UpdateStatus();
+                if (await IsStreamerLive())
+                {
+                    Console.WriteLine("Streamer ao vivo. Enviando notificação...");
+                    await SendLiveStartNotification();
+                    await UpdateStatus();
+                }
+                else
+                {
+                    Console.WriteLine("Streamer não está ao vivo. Nenhuma ação tomada.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro no CheckLiveStatus: {ex.Message}");
             }
         }
     }
 }
-*/
