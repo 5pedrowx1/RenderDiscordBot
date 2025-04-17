@@ -1,98 +1,211 @@
 using DSharpPlus;
+using DSharpPlus.CommandsNext;
+using DSharpPlus.CommandsNext.Attributes;
+using DSharpPlus.CommandsNext.Exceptions;
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
+using DSharpPlus.Interactivity.Extensions;
+using DSharpPlus.Lavalink;
+using DSharpPlus.Net;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace RenderDiscordBot
 {
-    public class EntryHandler
+    public sealed class Program
     {
-        private readonly DiscordClient _client;
-        private readonly Config _config;
+        public static DiscordClient? Client { get; private set; }
+        private static Config? BotConfig;
+        private static Timer? _lavalinkMonitorTimer;
 
-        public EntryHandler(DiscordClient client, Config config)
+        static async Task Main(string[] args)
         {
-            _client = client;
-            _config = config;
-        }
+            string firebaseEncryptionKey = Environment.GetEnvironmentVariable("FIREBASE_ENCRYPTION_KEY")
+                ?? throw new Exception("Chave de criptografia para o Firebase não configurada.");
+            FirebaseService.InitializeFirebase(firebaseEncryptionKey);
+            BotConfig = await ConfigService.GetConfigFromFirestoreAsync();
 
-        public async Task OnUserJoinedAsync(DiscordClient sender, GuildMemberAddEventArgs e)
-        {
-            var user = e.Member;
-            Console.WriteLine($"Novo usuário {user.Username} entrou no servidor.");
-
-            ulong roleId = _config.MemberRoleId;
-            var role = user.Guild.GetRole(roleId);
-            if (role == null)
+            Client = new DiscordClient(new DiscordConfiguration()
             {
-                Console.WriteLine($"Cargo com ID {roleId} não encontrado.");
-                return;
-            }
+                Intents = DiscordIntents.All,
+                Token = BotConfig.Token,
+                TokenType = TokenType.Bot,
+                AutoReconnect = true,
+                MinimumLogLevel = LogLevel.None
+            });
 
-            var botUser = await user.Guild.GetMemberAsync(_client.CurrentUser.Id);
-
-            var anyChannel = user.Guild.Channels.Values.FirstOrDefault();
-            if (anyChannel == null || !botUser.PermissionsIn(anyChannel).HasPermission(Permissions.ManageRoles))
+            var lavalink = Client.UseLavalink();
+            var endpoint = new ConnectionEndpoint
             {
-                Console.WriteLine("O bot não tem permissão para gerenciar cargos.");
-                return;
-            }
-
-            var botHighestRole = botUser.Roles.OrderByDescending(r => r.Position).FirstOrDefault();
-            if (botHighestRole == null || botHighestRole.Position <= role.Position)
-            {
-                Console.WriteLine("O cargo do bot não está acima do cargo a ser atribuído.");
-                return;
-            }
-
-            await user.GrantRoleAsync(role);
-            Console.WriteLine($"Cargo {role.Name} atribuído ao usuário {user.Username}.");
-
-            var welcomeEmbed = new DiscordEmbedBuilder
-            {
-                Title = "🎉 Boas-vindas ao servidor!",
-                Description = $"Olá {user.Mention}, seja bem-vindo ao servidor! Estamos felizes em tê-lo conosco. 😄",
-                Color = DiscordColor.Green,
-                Thumbnail = new DiscordEmbedBuilder.EmbedThumbnail { Url = user.AvatarUrl ?? user.DefaultAvatarUrl }
+                Hostname = "lava-all.ajieblogs.eu.org",
+                Port = 443,
+                Secured = true
             };
-            welcomeEmbed.WithFooter("Seja ativo e aproveite a nossa comunidade! 🎮");
+            var lavalinkConfig = new LavalinkConfiguration
+            {
+                Password = "https://dsc.gg/ajidevserver",
+                RestEndpoint = endpoint,
+                SocketEndpoint = endpoint
+            };
 
-            var welcomeChannel = user.Guild.GetChannel(_config.EntryChannelId);
-            if (welcomeChannel != null)
+            var services = new ServiceCollection();
+            services.AddSingleton(Client);
+            services.AddSingleton(BotConfig);
+            services.AddSingleton<EntryHandler>();
+            services.AddSingleton<TicketHandler>();
+            services.AddSingleton<VoiceCreateManager>();
+            services.AddSingleton<BotFuns>();
+            services.AddSingleton<AdmCommands>();
+            services.AddSingleton<News>();
+            var serviceProvider = services.BuildServiceProvider();
+            var entryHandler = serviceProvider.GetRequiredService<EntryHandler>();
+            Client.GuildMemberAdded += entryHandler.OnUserJoinedAsync;
+            Client.GuildMemberUpdated += entryHandler.OnUserUpdatedAsync;
+            var newsModule = serviceProvider.GetRequiredService<News>();
+
+            var commandsConfig = new CommandsNextConfiguration
             {
-                await welcomeChannel.SendMessageAsync(embed: welcomeEmbed);
+                StringPrefixes = [BotConfig.CommandPrefix],
+                EnableDms = BotConfig.EnableDms,
+                EnableMentionPrefix = BotConfig.EnableMentionPrefix,
+                Services = serviceProvider
+            };
+
+            var commands = Client.UseCommandsNext(commandsConfig);
+            commands.RegisterCommands<TicketHandler>();
+            commands.RegisterCommands<MusicCommands>();
+            commands.RegisterCommands<VoiceCreateManager>();
+            commands.RegisterCommands<BotFuns>();
+            commands.RegisterCommands<AdmCommands>();
+            commands.CommandErrored += OnCommandError;
+
+            Client.UseInteractivity(new DSharpPlus.Interactivity.InteractivityConfiguration
+            {
+                Timeout = TimeSpan.FromMinutes(2)
+            });
+
+            Client.Ready += OnClientReady;
+            Client.MessageCreated += OnMessageCreated;
+
+            await Client.ConnectAsync();
+            await Client.GetLavalink().ConnectAsync(lavalinkConfig);
+            _lavalinkMonitorTimer = new Timer(async _ => await CheckLavalinkConnection(), null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+            _ = StartHttpServer();
+            await Task.Delay(-1);
+        }
+
+        private static async Task CheckLavalinkConnection()
+        {
+            try
+            {
+                if (Client == null) return;
+                var lavalink = Client.GetLavalink();
+                if (!lavalink.ConnectedNodes.Any())
+                {
+                    Console.WriteLine("Lavalink desconectado, tentando reconectar...");
+
+                    var endpoint = new ConnectionEndpoint
+                    {
+                        Hostname = "lava-all.ajieblogs.eu.org",
+                        Port = 443,
+                        Secured = true
+                    };
+                    var lavalinkConfig = new LavalinkConfiguration
+                    {
+                        Password = "https://dsc.gg/ajidevserver",
+                        RestEndpoint = endpoint,
+                        SocketEndpoint = endpoint
+                    };
+
+                    await lavalink.ConnectAsync(lavalinkConfig);
+
+                    if (lavalink.ConnectedNodes.Any())
+                        Console.WriteLine("Reconexão com o Lavalink realizada com sucesso.");
+                    else
+                        Console.WriteLine("Tentativa de reconexão com o Lavalink falhou.");
+                }
             }
-            else
+            catch (Exception ex)
             {
-                Console.WriteLine("Canal de boas-vindas não encontrado.");
+                Console.WriteLine($"Erro ao verificar ou reconectar o Lavalink: {ex.Message}");
             }
         }
 
-        public async Task OnUserUpdatedAsync(DiscordClient sender, GuildMemberUpdateEventArgs e)
+        private static async Task OnCommandError(CommandsNextExtension sender, CommandErrorEventArgs e)
         {
-            var member = e.Member;
-
-            if (member.PremiumSince.HasValue)
+            if (e.Exception is ChecksFailedException castedException)
             {
-                Console.WriteLine($"Usuário {member.Username} deu um boost no servidor.");
-
-                var boostEmbed = new DiscordEmbedBuilder
+                string cooldownTimer = string.Empty;
+                foreach (var check in castedException.FailedChecks)
                 {
-                    Title = "🚀 Novo Server Boost!",
-                    Description = $"{member.Mention} deu um **boost** no servidor! 🎉 Obrigado pelo seu apoio! 💖",
-                    Color = DiscordColor.Purple,
-                    Thumbnail = new DiscordEmbedBuilder.EmbedThumbnail { Url = member.AvatarUrl ?? member.DefaultAvatarUrl }
+                    if (check is CooldownAttribute cooldown)
+                    {
+                        TimeSpan timeLeft = cooldown.GetRemainingCooldown(e.Context);
+                        cooldownTimer = timeLeft.ToString(@"hh\:mm\:ss");
+                    }
+                }
+                var cooldownMessage = new DiscordEmbedBuilder()
+                {
+                    Title = "Aguarde o término do tempo de espera",
+                    Description = "Tempo restante: " + cooldownTimer,
+                    Color = DiscordColor.Red
                 };
-                boostEmbed.WithFooter("Vamos continuar crescendo juntos!");
+                await e.Context.Channel.SendMessageAsync(embed: cooldownMessage);
+            }
+        }
 
-                var boostChannel = member.Guild.GetChannel(_config.BoostChannelId);
-                if (boostChannel != null)
+        private static async Task OnClientReady(DiscordClient sender, ReadyEventArgs e)
+        {
+            Console.WriteLine("Bot está online!");
+            await LogEvent("Bot iniciado com sucesso", "Ready");
+        }
+
+        private static async Task OnMessageCreated(DiscordClient sender, MessageCreateEventArgs e)
+        {
+            if (e.Message.Content.StartsWith(BotConfig!.CommandPrefix))
+            {
+                string logContent = $"Comando recebido de {(e.Guild != null ? e.Guild.Name : "DM")}: {e.Message.Content}";
+                Console.WriteLine(logContent);
+                await LogEvent(logContent, "Command");
+            }
+        }
+
+        private static async Task LogEvent(string message, string eventType)
+        {
+            try
+            {
+                var docRef = FirebaseService.FirestoreDb!.Collection("bot_logs").Document();
+                var logData = new
                 {
-                    await boostChannel.SendMessageAsync(embed: boostEmbed);
-                }
-                else
-                {
-                    Console.WriteLine("Canal de boost não encontrado.");
-                }
+                    Message = message,
+                    EventType = eventType,
+                    Timestamp = DateTime.UtcNow
+                };
+                await docRef.SetAsync(logData);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erro ao gravar log: {ex.Message}");
+            }
+        }
+
+        private static async Task StartHttpServer()
+        {
+            try
+            {
+                string portEnv = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+                if (!int.TryParse(portEnv, out int port))
+                    port = 8080;
+                var builder = WebApplication.CreateBuilder();
+                var app = builder.Build();
+                app.MapGet("/", () => "Bot funcionando!");
+                Console.WriteLine($"Servidor HTTP iniciado na porta: {port}");
+                await app.RunAsync($"http://0.0.0.0:{port}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Erro ao iniciar o servidor HTTP: " + ex.Message);
             }
         }
     }
