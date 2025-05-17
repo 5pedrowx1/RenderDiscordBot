@@ -15,7 +15,7 @@ namespace RenderDiscordBot
         private readonly Dictionary<string, string?> _lastStreamIds = [];
         private static readonly Regex StreamerRegex = new(@"twitch\.tv\/([a-zA-Z0-9_]+)", RegexOptions.Compiled);
         private readonly ulong MileneServerID = 760314806493249587;
-        private readonly ulong MileneNewsChannel = 1167095969398132836;
+        private readonly ulong MileneNewsChannel = 1167112631623098398;
         private const string TwitchClientId = "xbknm3de1noh1ppl94x7j183noqc77";
         private const string TwitchAccessToken = "an8q7ury7incx8czyb33fc0ce6icsc";
 
