@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
+
 namespace RenderDiscordBot
 {
     public sealed class Program
