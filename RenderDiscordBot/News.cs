@@ -25,7 +25,7 @@ namespace RenderDiscordBot
             _config = config;
             _httpClient = new HttpClient();
 
-            _timer = new System.Timers.Timer(30000);
+            _timer = new System.Timers.Timer(100000);
             _timer.Elapsed += async (_, __) => await CheckAllStreams();
             _timer.Start();
             Console.WriteLine($"[{DateTime.Now}] Módulo News iniciado (checagem a cada 30s).");
