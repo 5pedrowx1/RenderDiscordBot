@@ -1,6 +1,7 @@
 using DSharpPlus;
 using DSharpPlus.CommandsNext;
 using DSharpPlus.Entities;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using Newtonsoft.Json.Linq;
 using System.Text.RegularExpressions;
 
@@ -25,7 +26,7 @@ namespace RenderDiscordBot
             _config = config;
             _httpClient = new HttpClient();
 
-            _timer = new System.Timers.Timer(100000);
+            _timer = new System.Timers.Timer(30000);
             _timer.Elapsed += async (_, __) => await CheckAllStreams();
             _timer.Start();
             Console.WriteLine($"[{DateTime.Now}] Módulo News iniciado (checagem a cada 30s).");
@@ -96,12 +97,17 @@ namespace RenderDiscordBot
                 .WithFooter("Twitch", "https://i.imgur.com/BAr5fnh.png")
                 .WithTimestamp(DateTimeOffset.UtcNow);
 
-            var button = new DiscordLinkButtonComponent($"https://twitch.tv/{streamer}", "🎥 Assistir ao Vivo");
-            var msg = new DiscordMessageBuilder()
-                            .AddEmbed(embed)
-                            .AddComponents(button);
+            var brokenUrl = $"https://twitch.tv\u200B/{streamer}";
+            var button = new DiscordLinkButtonComponent(
+                brokenUrl,
+                "🎥 Assistir ao Vivo"
+            );
 
-            await channel.SendMessageAsync(msg);
+            var builder = new DiscordMessageBuilder()
+                .AddEmbed(embed)
+                .AddComponents(button);
+
+            await channel.SendMessageAsync(builder);
             Console.WriteLine($"Notificação de {streamer} enviada para canal {channel.Name}.");
         }
 
