@@ -121,6 +121,33 @@ namespace RenderDiscordBot
             await SaveXpDataAsync();
         }
 
+        private async Task LimparUsuariosInativosAsync(DiscordGuild guild)
+        {
+            var usuariosParaRemover = new List<ulong>();
+
+            foreach (var userId in _xpUsuarios.Keys.ToList())
+            {
+                try
+                {
+                    var member = await guild.GetMemberAsync(userId);
+                    if (member == null)
+                        usuariosParaRemover.Add(userId);
+                }
+                catch
+                {
+                    usuariosParaRemover.Add(userId);
+                }
+            }
+
+            foreach (var userId in usuariosParaRemover)
+            {
+                _xpUsuarios.Remove(userId);
+            }
+
+            if (usuariosParaRemover.Count > 0)
+                await SaveXpDataAsync();
+        }
+
         [Command("rank")]
         public async Task RankAsync(CommandContext ctx)
         {
@@ -152,27 +179,52 @@ namespace RenderDiscordBot
             if (!await ValidateCommandUsage(ctx))
                 return;
 
+            await LimparUsuariosInativosAsync(ctx.Guild);
+
             if (_xpUsuarios.Count == 0)
             {
                 await ctx.Channel.SendMessageAsync("Ainda não há dados de XP.");
                 return;
             }
 
-            var ranking = _xpUsuarios.OrderByDescending(kvp => kvp.Value)
+            var rankingTasks = _xpUsuarios
+                .OrderByDescending(kvp => kvp.Value)
                 .Take(10)
-                .Select((kvp, index) =>
+                .Select(async (kvp, index) =>
                 {
-                    var memberTask = ctx.Guild.GetMemberAsync(kvp.Key);
-                    memberTask.Wait();
-                    var member = memberTask.Result;
-                    string username = member != null ? member.Username : "Usuário desconhecido";
-                    return $"`{index + 1}.` **{username}** - {kvp.Value} XP";
-                }).ToList();
+                    try
+                    {
+                        var member = await ctx.Guild.GetMemberAsync(kvp.Key);
+                        if (member != null)
+                        {
+                            string username = member.Username;
+                            return (true, $"`{index + 1}.` **{username}** - {kvp.Value} XP");
+                        }
+                    }
+                    catch
+                    {
+                        // usuário saiu do servidor
+                    }
+
+                    return (false, string.Empty);
+                });
+
+            var results = await Task.WhenAll(rankingTasks);
+            var rankingLines = results
+                .Where(r => r.Item1)
+                .Select(r => r.Item2)
+                .ToList();
+
+            if (rankingLines.Count == 0)
+            {
+                await ctx.Channel.SendMessageAsync("Ainda não há membros ativos no ranking.");
+                return;
+            }
 
             var embed = new DiscordEmbedBuilder
             {
                 Title = "🏆 Ranking dos Mais Ativos",
-                Description = string.Join("\n", ranking),
+                Description = string.Join("\n", rankingLines),
                 Color = DiscordColor.Azure,
                 Thumbnail = new DiscordEmbedBuilder.EmbedThumbnail { Url = ctx.Guild.IconUrl },
                 Footer = new DiscordEmbedBuilder.EmbedFooter { Text = "Continue participando para ganhar mais XP!" },
