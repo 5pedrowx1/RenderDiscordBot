@@ -178,7 +178,7 @@ namespace RenderDiscordBot
         {
             if (!await ValidateCommandUsage(ctx))
             {
-                //return;
+                return;
             }
 
             await LimparUsuariosInativosAsync(ctx.Guild);
