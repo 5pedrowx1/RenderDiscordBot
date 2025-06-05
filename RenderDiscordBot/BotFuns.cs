@@ -177,7 +177,9 @@ namespace RenderDiscordBot
         public async Task LeaderboardAsync(CommandContext ctx)
         {
             if (!await ValidateCommandUsage(ctx))
-                return;
+            {
+                //return;
+            }
 
             await LimparUsuariosInativosAsync(ctx.Guild);
 
