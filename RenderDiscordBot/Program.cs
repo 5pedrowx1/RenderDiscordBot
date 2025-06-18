@@ -168,7 +168,7 @@ namespace RenderDiscordBot
                 var app = builder.Build();
                 app.MapGet("/", () => "Bot funcionando!");
                 Console.WriteLine($"Servidor HTTP iniciado na porta: {port}");
-                await app.RunAsync($"http://192.168.1.3:{port}");
+                await app.RunAsync($"http://0.0.0.0:{port}");
             }
             catch (Exception ex)
             {
