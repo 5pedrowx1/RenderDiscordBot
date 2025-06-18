@@ -89,9 +89,6 @@ namespace RenderDiscordBot
                 Timeout = TimeSpan.FromMinutes(2)
             });
 
-            //Client.Ready += OnClientReady;
-            Client.MessageCreated += OnMessageCreated;
-
             await Client.ConnectAsync();
             await Client.GetLavalink().ConnectAsync(lavalinkConfig);
             //_lavalinkMonitorTimer = new Timer(async _ => await CheckLavalinkConnection(), null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
@@ -160,41 +157,6 @@ namespace RenderDiscordBot
             }
         }
 
-        private static async Task OnClientReady(DiscordClient sender, ReadyEventArgs e)
-        {
-            Console.WriteLine("Bot está online!");
-            await LogEvent("Bot iniciado com sucesso", "Ready");
-        }
-
-        private static async Task OnMessageCreated(DiscordClient sender, MessageCreateEventArgs e)
-        {
-            if (e.Message.Content.StartsWith(BotConfig!.CommandPrefix))
-            {
-                string logContent = $"Comando recebido de {(e.Guild != null ? e.Guild.Name : "DM")}: {e.Message.Content}";
-                Console.WriteLine(logContent);
-                await LogEvent(logContent, "Command");
-            }
-        }
-
-        private static async Task LogEvent(string message, string eventType)
-        {
-            try
-            {
-                var docRef = FirebaseService.FirestoreDb!.Collection("bot_logs").Document();
-                var logData = new
-                {
-                    Message = message,
-                    EventType = eventType,
-                    Timestamp = DateTime.UtcNow
-                };
-                await docRef.SetAsync(logData);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Erro ao gravar log: {ex.Message}");
-            }
-        }
-
         private static async Task StartHttpServer()
         {
             try
@@ -206,7 +168,7 @@ namespace RenderDiscordBot
                 var app = builder.Build();
                 app.MapGet("/", () => "Bot funcionando!");
                 Console.WriteLine($"Servidor HTTP iniciado na porta: {port}");
-                await app.RunAsync($"http://0.0.0.0:{port}");
+                await app.RunAsync($"http://192.168.1.3:{port}");
             }
             catch (Exception ex)
             {
