@@ -305,6 +305,7 @@ namespace RenderDiscordBot
                 sanitizedName = $"sugestao-{suggestion.Id}";
 
             var channelName = $"sugestao-{suggestion.Id}-{sanitizedName}";
+            var authorMember = await guild.GetMemberAsync(suggestion.AuthorId);
             var suggestionChannel = await guild.CreateChannelAsync(channelName, ChannelType.Text, category);
 
             suggestion.ChannelId = suggestionChannel.Id;
@@ -312,7 +313,7 @@ namespace RenderDiscordBot
             var embed = new DiscordEmbedBuilder()
                 .WithTitle($"📬 Sugestão #{suggestion.Id}")
                 .WithDescription(suggestion.Content)
-                .WithFooter($"Por {user.Username}#{user.Discriminator}", user.AvatarUrl)
+                .WithFooter($"Por {authorMember.Username}#{authorMember.Discriminator}", authorMember.AvatarUrl)
                 .WithTimestamp(suggestion.Timestamp)
                 .WithColor(DiscordColor.Azure)
                 .AddField("👍 Likes", "0", true)
