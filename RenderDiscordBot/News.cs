@@ -1,7 +1,6 @@
 using DSharpPlus;
 using DSharpPlus.CommandsNext;
 using DSharpPlus.Entities;
-using Microsoft.AspNetCore.Mvc.Rendering;
 using Newtonsoft.Json.Linq;
 using System.Text.RegularExpressions;
 
@@ -29,7 +28,6 @@ namespace RenderDiscordBot
             _timer = new System.Timers.Timer(30000);
             _timer.Elapsed += async (_, __) => await CheckAllStreams();
             _timer.Start();
-            Console.WriteLine($"[{DateTime.Now}] Módulo News iniciado (checagem a cada 30s).");
         }
 
         private IEnumerable<string> GetStreamerNames()
@@ -108,7 +106,6 @@ namespace RenderDiscordBot
                 .AddComponents(button);
 
             await channel.SendMessageAsync(builder);
-            Console.WriteLine($"Notificação de {streamer} enviada para canal {channel.Name}.");
         }
 
 
@@ -124,7 +121,6 @@ namespace RenderDiscordBot
                 {
                     if (!await IsStreamerLive(streamer))
                     {
-                        Console.WriteLine($"{streamer} OFFLINE.");
                         continue;
                     }
 
