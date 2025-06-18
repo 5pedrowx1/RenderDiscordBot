@@ -1,5 +1,4 @@
 using DSharpPlus;
-using DSharpPlus.EventArgs;
 using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.CommandsNext.Exceptions;
@@ -7,7 +6,6 @@ using DSharpPlus.Entities;
 using DSharpPlus.Interactivity.Extensions;
 using DSharpPlus.Lavalink;
 using DSharpPlus.Net;
-using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -92,7 +90,8 @@ namespace RenderDiscordBot
             await Client.ConnectAsync();
             await Client.GetLavalink().ConnectAsync(lavalinkConfig);
             _lavalinkMonitorTimer = new Timer(async _ => await CheckLavalinkConnection(), null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
-            _ = StartHttpServer();
+            var httpServer = new HttpServer();
+            _ = httpServer.StartAsync();
             Console.WriteLine("Bot está online!");
             await Task.Delay(-1);
         }
@@ -154,25 +153,6 @@ namespace RenderDiscordBot
                     Color = DiscordColor.Red
                 };
                 await e.Context.Channel.SendMessageAsync(embed: cooldownMessage);
-            }
-        }
-
-        private static async Task StartHttpServer()
-        {
-            try
-            {
-                string portEnv = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-                if (!int.TryParse(portEnv, out int port))
-                    port = 8080;
-                var builder = WebApplication.CreateBuilder();
-                var app = builder.Build();
-                app.MapGet("/", () => "Bot funcionando!");
-                Console.WriteLine($"Servidor HTTP iniciado na porta: {port}");
-                await app.RunAsync($"http://0.0.0.0:{port}");
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Erro ao iniciar o servidor HTTP: " + ex.Message);
             }
         }
     }
