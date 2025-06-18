@@ -17,7 +17,7 @@ namespace RenderDiscordBot
     {
         public static DiscordClient? Client { get; private set; }
         private static Config? BotConfig;
-        //private static Timer? _lavalinkMonitorTimer;
+        private static Timer? _lavalinkMonitorTimer;
 
         static async Task Main()
         {
@@ -91,7 +91,7 @@ namespace RenderDiscordBot
 
             await Client.ConnectAsync();
             await Client.GetLavalink().ConnectAsync(lavalinkConfig);
-            //_lavalinkMonitorTimer = new Timer(async _ => await CheckLavalinkConnection(), null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+            _lavalinkMonitorTimer = new Timer(async _ => await CheckLavalinkConnection(), null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
             _ = StartHttpServer();
             Console.WriteLine("Bot está online!");
             await Task.Delay(-1);
