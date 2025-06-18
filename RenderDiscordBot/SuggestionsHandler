@@ -7,45 +7,6 @@ using DSharpPlus.Interactivity.Extensions;
 
 namespace RenderDiscordBot
 {
-    public class SuggestionService
-    {
-        private readonly List<Suggestion> _suggestions = new();
-        private int _nextId = 1;
-
-        public Suggestion AddSuggestion(ulong authorId, string content)
-        {
-            var suggestion = new Suggestion
-            {
-                Id = _nextId++,
-                AuthorId = authorId,
-                Content = content,
-                Timestamp = DateTime.UtcNow,
-                LikedBy = new HashSet<ulong>(),
-                DislikedBy = new HashSet<ulong>()
-            };
-            _suggestions.Add(suggestion);
-            return suggestion;
-        }
-
-        public Suggestion? GetSuggestion(int id)
-            => _suggestions.FirstOrDefault(s => s.Id == id);
-    }
-
-    public class Suggestion
-    {
-        public int Id { get; set; }
-        public ulong AuthorId { get; set; }
-        public required string Content { get; set; }
-        public DateTime Timestamp { get; set; }
-        public required HashSet<ulong> LikedBy { get; set; }
-        public required HashSet<ulong> DislikedBy { get; set; }
-        public ulong? ChannelId { get; set; }
-        public ulong? MessageId { get; set; }
-
-        public int Likes => LikedBy.Count;
-        public int Dislikes => DislikedBy.Count;
-    }
-
     public class SuggestionsHandler : BaseCommandModule
     {
         private readonly SuggestionService _service;
@@ -208,7 +169,7 @@ namespace RenderDiscordBot
 
                 var builder = new DiscordMessageBuilder()
                     .WithEmbed(updatedEmbed)
-                    .AddComponents(new[] { likeButton, dislikeButton, debateButton });
+                    .AddComponents([likeButton, dislikeButton, debateButton]);
 
                 await message.ModifyAsync(builder);
 
@@ -296,10 +257,9 @@ namespace RenderDiscordBot
             var guild = _client.Guilds[_config.ServerId];
             var category = guild.GetChannel(_config.CategorySugestsId);
 
-            var sanitizedName = new string(content
+            var sanitizedName = new string([.. content
                 .Where(c => char.IsLetterOrDigit(c) || c == '-' || c == '_')
-                .Take(30)
-                .ToArray()).ToLowerInvariant();
+                .Take(30)]).ToLowerInvariant();
 
             if (string.IsNullOrWhiteSpace(sanitizedName))
                 sanitizedName = $"sugestao-{suggestion.Id}";
