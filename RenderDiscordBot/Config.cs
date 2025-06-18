@@ -11,11 +11,12 @@ namespace RenderDiscordBot
         public ulong EntryChannelId { get; set; }
         public ulong BoostChannelId { get; set; }
         public ulong CategorySuportId { get; set; }
+        public ulong CategorySugestsId { get; set; }
         public ulong AdminRoleId { get; set; }
+        public ulong ModRoleId { get; set; }
         public ulong ServerId { get; set; }
         public ulong VoiceCreateId { get; set; }
         public ulong CategoryVoiceId { get; set; }
-        public ulong MiniRPGChannelId { get; set; }
         public ulong MuteRoleId { get; set; }
         public ulong NewsChannelId { get; set; }
         public string CommandPrefix { get; set; } = "!";
@@ -47,11 +48,12 @@ namespace RenderDiscordBot
             ulong entryChannelId = GetField<ulong>(data, "EntryChannelId");
             ulong boostChannelId = GetField<ulong>(data, "BoostChannelId");
             ulong categorySuportId = GetField<ulong>(data, "CategorySuportId");
+            ulong categorySugestsId = GetField<ulong>(data, "CategorySugestsId");
             ulong adminRoleId = GetField<ulong>(data, "AdminRoleId");
+            ulong modRoleId = GetField<ulong>(data, "ModRoleId");
             ulong serverId = GetField<ulong>(data, "ServerId");
             ulong voiceCreateId = GetField<ulong>(data, "VoiceCreateId");
             ulong categoryVoiceId = GetField<ulong>(data, "CategoryVoiceId");
-            ulong miniRPGChannelId = GetField<ulong>(data, "MiniRPGChannelId");
             ulong muteRoleId = GetField<ulong>(data, "MuteRoleId");
             ulong newsChannelId = GetField<ulong>(data, "NewsChannelId");
 
@@ -86,11 +88,12 @@ namespace RenderDiscordBot
                 EntryChannelId = entryChannelId,
                 BoostChannelId = boostChannelId,
                 CategorySuportId = categorySuportId,
+                CategorySugestsId = categorySugestsId,
                 AdminRoleId = adminRoleId,
+                ModRoleId = modRoleId,
                 ServerId = serverId,
                 VoiceCreateId = voiceCreateId,
                 CategoryVoiceId = categoryVoiceId,
-                MiniRPGChannelId = miniRPGChannelId,
                 MuteRoleId = muteRoleId,
                 NewsChannelId = newsChannelId,
                 CommandPrefix = commandPrefix,
