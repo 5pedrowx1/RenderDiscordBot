@@ -27,6 +27,9 @@ WORKDIR /app
 # Copy the published output from the build stage
 COPY --from=build /app/publish .
 
+# Copy the wwwroot things
+COPY --from=build /src/RenderDiscordBot/wwwroot ./wwwroot
+
 # (Optional) Copy additional files, such as a service account key
 COPY RenderDiscordBot/serviceAccountKey.enc /app/serviceAccountKey.enc
 
