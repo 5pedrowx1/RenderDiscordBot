@@ -1,9 +1,9 @@
 using DSharpPlus;
+using DSharpPlus.EventArgs;
 using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.CommandsNext.Exceptions;
 using DSharpPlus.Entities;
-using DSharpPlus.EventArgs;
 using DSharpPlus.Interactivity.Extensions;
 using DSharpPlus.Lavalink;
 using DSharpPlus.Net;
@@ -11,16 +11,15 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-
 namespace RenderDiscordBot
 {
     public sealed class Program
     {
         public static DiscordClient? Client { get; private set; }
         private static Config? BotConfig;
-        private static Timer? _lavalinkMonitorTimer;
+        //private static Timer? _lavalinkMonitorTimer;
 
-        static async Task Main(string[] args)
+        static async Task Main()
         {
             string firebaseEncryptionKey = Environment.GetEnvironmentVariable("FIREBASE_ENCRYPTION_KEY")
                 ?? throw new Exception("Chave de criptografia para o Firebase não configurada.");
@@ -47,7 +46,8 @@ namespace RenderDiscordBot
             {
                 Password = "https://dsc.gg/ajidevserver",
                 RestEndpoint = endpoint,
-                SocketEndpoint = endpoint
+                SocketEndpoint = endpoint,
+                SocketAutoReconnect = true
             };
 
             var services = new ServiceCollection();
@@ -55,6 +55,8 @@ namespace RenderDiscordBot
             services.AddSingleton(BotConfig);
             services.AddSingleton<EntryHandler>();
             services.AddSingleton<TicketHandler>();
+            services.AddSingleton<SuggestionsHandler>();
+            services.AddSingleton<SuggestionService>();
             services.AddSingleton<VoiceCreateManager>();
             services.AddSingleton<BotFuns>();
             services.AddSingleton<AdmCommands>();
@@ -75,6 +77,7 @@ namespace RenderDiscordBot
 
             var commands = Client.UseCommandsNext(commandsConfig);
             commands.RegisterCommands<TicketHandler>();
+            commands.RegisterCommands<SuggestionsHandler>();
             commands.RegisterCommands<MusicCommands>();
             commands.RegisterCommands<VoiceCreateManager>();
             commands.RegisterCommands<BotFuns>();
@@ -86,13 +89,14 @@ namespace RenderDiscordBot
                 Timeout = TimeSpan.FromMinutes(2)
             });
 
-            Client.Ready += OnClientReady;
+            //Client.Ready += OnClientReady;
             Client.MessageCreated += OnMessageCreated;
 
             await Client.ConnectAsync();
             await Client.GetLavalink().ConnectAsync(lavalinkConfig);
-            _lavalinkMonitorTimer = new Timer(async _ => await CheckLavalinkConnection(), null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+            //_lavalinkMonitorTimer = new Timer(async _ => await CheckLavalinkConnection(), null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
             _ = StartHttpServer();
+            Console.WriteLine("Bot está online!");
             await Task.Delay(-1);
         }
 
