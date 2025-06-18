@@ -263,7 +263,7 @@ namespace RenderDiscordBot
 
         private TimeSpan ParseTempo(string input)
         {
-            int valor = int.Parse(new string(input.TakeWhile(char.IsDigit).ToArray()));
+            int valor = int.Parse(new string([.. input.TakeWhile(char.IsDigit)]));
             char unidade = input.Last();
 
             return unidade switch
@@ -308,6 +308,5 @@ namespace RenderDiscordBot
             await usuario.RevokeRoleAsync(muteRole, "Desmutado manualmente");
             await ctx.RespondAsync($"🔈 {usuario.Mention} foi desmutado.");
         }
-
     }
 }
