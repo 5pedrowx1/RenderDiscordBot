@@ -1,6 +1,6 @@
 using Google.Cloud.Firestore;
 
-namespace RenderDiscordBot
+namespace DiscordBot
 {
     public class Config
     {
