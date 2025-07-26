@@ -1,11 +1,10 @@
 using DSharpPlus;
-using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.CommandsNext;
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
 using Google.Cloud.Firestore;
 
-namespace RenderDiscordBot
+namespace DiscordBot
 {
     public class VoiceCreateManager : BaseCommandModule
     {
@@ -104,8 +103,6 @@ namespace RenderDiscordBot
                     newVoiceChannel = await guild.CreateChannelAsync(newChannelName, ChannelType.Voice, userLimit: 10);
                 }
 
-                Console.WriteLine($"Novo canal criado: {newVoiceChannel.Name} (ID: {newVoiceChannel.Id})");
-
                 _createdChannels.Add(newVoiceChannel.Id);
                 await SaveTemporaryChannelsAsync();
 
@@ -136,7 +133,6 @@ namespace RenderDiscordBot
                                     await currentChannel.DeleteAsync();
                                     _createdChannels.Remove(currentChannel.Id);
                                     await SaveTemporaryChannelsAsync();
-                                    Console.WriteLine($"Canal deletado: {currentChannel.Name} (ID: {currentChannel.Id})");
                                 }
                                 catch (Exception ex)
                                 {
@@ -195,31 +191,6 @@ namespace RenderDiscordBot
                 _createdChannels.Remove(id);
             }
             await SaveTemporaryChannelsAsync();
-        }
-
-        [Command("criarcanal")]
-        public async Task CriarCanalTeste(CommandContext ctx)
-        {
-
-            if (_config.AdminRoleId != 0)
-            {
-                var member = await ctx.Guild.GetMemberAsync(ctx.User.Id);
-                if (!member.Roles.Any(role => role.Id == _config.AdminRoleId))
-                {
-                    var erroPermissao = new DiscordEmbedBuilder
-                    {
-                        Title = "❌ Permissão negada",
-                        Description = "Você precisa ser um administrador para usar esse comando.",
-                        Color = DiscordColor.Red
-                    };
-                    await ctx.Channel.SendMessageAsync(embed: erroPermissao);
-                    return;
-                }
-            }
-
-            var guild = ctx.Guild;
-            var newChannel = await guild.CreateChannelAsync("CanalTeste", ChannelType.Voice, userLimit: 10);
-            await ctx.Channel.SendMessageAsync($"✅ Canal criado: {newChannel.Mention}");
         }
     }
 }
