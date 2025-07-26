@@ -3,7 +3,7 @@ using Google.Apis.Auth.OAuth2;
 using Google.Cloud.Firestore;
 using System.Text;
 
-namespace RenderDiscordBot
+namespace DiscordBot
 {
     public static class FirebaseService
     {
