@@ -1,4 +1,4 @@
-namespace RenderDiscordBot
+namespace DiscordBot
 {
     public class Suggestion
     {
