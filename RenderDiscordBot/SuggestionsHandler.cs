@@ -5,7 +5,7 @@ using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
 using DSharpPlus.Interactivity.Extensions;
 
-namespace RenderDiscordBot
+namespace DiscordBot
 {
     public class SuggestionsHandler : BaseCommandModule
     {
