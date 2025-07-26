@@ -2,7 +2,7 @@ using DSharpPlus;
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
 
-namespace RenderDiscordBot
+namespace DiscordBot
 {
     public class EntryHandler
     {
@@ -69,22 +69,27 @@ namespace RenderDiscordBot
 
         public async Task OnUserUpdatedAsync(DiscordClient sender, GuildMemberUpdateEventArgs e)
         {
-            var member = e.Member;
+            var memberBefore = e.MemberBefore;
+            var memberAfter = e.Member;
 
-            if (member.PremiumSince.HasValue)
+            bool hadBoostBefore = memberBefore?.PremiumSince.HasValue ?? false;
+            bool hasBoostNow = memberAfter.PremiumSince.HasValue;
+
+            if (!hadBoostBefore && hasBoostNow)
             {
-                Console.WriteLine($"Usuário {member.Username} deu um boost no servidor.");
+                Console.WriteLine($"Usuário {memberAfter.Username} deu um novo boost no servidor.");
 
                 var boostEmbed = new DiscordEmbedBuilder
                 {
                     Title = "🚀 Novo Server Boost!",
-                    Description = $"{member.Mention} deu um **boost** no servidor! 🎉 Obrigado pelo seu apoio! 💖",
+                    Description = $"{memberAfter.Mention} deu um **boost** no servidor! 🎉 Obrigado pelo seu apoio! 💖",
                     Color = DiscordColor.Purple,
-                    Thumbnail = new DiscordEmbedBuilder.EmbedThumbnail { Url = member.AvatarUrl ?? member.DefaultAvatarUrl }
+                    Thumbnail = new DiscordEmbedBuilder.EmbedThumbnail { Url = memberAfter.AvatarUrl ?? memberAfter.DefaultAvatarUrl }
                 };
+
                 boostEmbed.WithFooter("Vamos continuar crescendo juntos!");
 
-                var boostChannel = member.Guild.GetChannel(_config.BoostChannelId);
+                var boostChannel = memberAfter.Guild.GetChannel(_config.BoostChannelId);
                 if (boostChannel != null)
                 {
                     await boostChannel.SendMessageAsync(embed: boostEmbed);
