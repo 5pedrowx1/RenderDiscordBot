@@ -5,7 +5,7 @@ using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
 using Google.Cloud.Firestore;
 
-namespace RenderDiscordBot
+namespace DiscordBot
 {
     public class BotFuns : BaseCommandModule
     {
