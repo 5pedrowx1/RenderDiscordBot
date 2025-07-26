@@ -27,10 +27,10 @@ WORKDIR /app
 # Copy the published output from the build stage
 COPY --from=build /app/publish .
 
-# Copy the wwwroot things
-COPY --from=build /src/RenderDiscordBot/wwwroot ./wwwroot
+# Copy the La_City_Music things
+COPY --from=build /src/RenderDiscordBot/La_City_Music ./La_City_Music
 
-# (Optional) Copy additional files, such as a service account key
+# Copy additional files, such as a service account key
 COPY RenderDiscordBot/serviceAccountKey.enc /app/serviceAccountKey.enc
 
 # Define the entrypoint
