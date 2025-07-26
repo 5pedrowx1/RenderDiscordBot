@@ -4,7 +4,7 @@ using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
 
-namespace RenderDiscordBot
+namespace DiscordBot
 {
     public class TicketHandler : BaseCommandModule
     {
