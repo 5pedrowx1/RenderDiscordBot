@@ -8,8 +8,9 @@ using DSharpPlus.Lavalink;
 using DSharpPlus.Net;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using System.Diagnostics;
 
-namespace RenderDiscordBot
+namespace DiscordBot
 {
     public sealed class Program
     {
@@ -58,12 +59,13 @@ namespace RenderDiscordBot
             services.AddSingleton<VoiceCreateManager>();
             services.AddSingleton<BotFuns>();
             services.AddSingleton<AdmCommands>();
-            services.AddSingleton<News>();
+            //services.AddSingleton<News>();
             var serviceProvider = services.BuildServiceProvider();
             var entryHandler = serviceProvider.GetRequiredService<EntryHandler>();
-            Client.GuildMemberAdded += entryHandler.OnUserJoinedAsync;
+            var voiceCreateManagerHandler = serviceProvider.GetRequiredService<VoiceCreateManager>();
+            //var newsModule = serviceProvider.GetRequiredService<News>();
             Client.GuildMemberUpdated += entryHandler.OnUserUpdatedAsync;
-            var newsModule = serviceProvider.GetRequiredService<News>();
+            Client.GuildMemberAdded += entryHandler.OnUserJoinedAsync;
 
             var commandsConfig = new CommandsNextConfiguration
             {
@@ -76,8 +78,6 @@ namespace RenderDiscordBot
             var commands = Client.UseCommandsNext(commandsConfig);
             commands.RegisterCommands<TicketHandler>();
             commands.RegisterCommands<SuggestionsHandler>();
-            commands.RegisterCommands<MusicCommands>();
-            commands.RegisterCommands<VoiceCreateManager>();
             commands.RegisterCommands<BotFuns>();
             commands.RegisterCommands<AdmCommands>();
             commands.CommandErrored += OnCommandError;
@@ -90,8 +90,7 @@ namespace RenderDiscordBot
             await Client.ConnectAsync();
             await Client.GetLavalink().ConnectAsync(lavalinkConfig);
             _lavalinkMonitorTimer = new Timer(async _ => await CheckLavalinkConnection(), null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
-            var httpServer = new HttpServer();
-            _ = httpServer.StartAsync();
+            OpenMusicAppHandler();
             Console.WriteLine("Bot está online!");
             await Task.Delay(-1);
         }
@@ -153,6 +152,54 @@ namespace RenderDiscordBot
                     Color = DiscordColor.Red
                 };
                 await e.Context.Channel.SendMessageAsync(embed: cooldownMessage);
+            }
+        }
+
+        static void OpenMusicAppHandler()
+        {
+            try
+            {
+                string musicFolder = Path.Combine(Environment.CurrentDirectory, "La_City_Music");
+                string musicAppPath = Path.Combine(musicFolder, "La_City_Music.exe");
+
+                Console.WriteLine($"Procurando por: {musicAppPath}");
+
+                if (File.Exists(musicAppPath))
+                {
+                    Console.WriteLine("✅ La_City_Music.exe encontrado, tentando executar...");
+
+                    ProcessStartInfo startInfo = new ProcessStartInfo
+                    {
+                        FileName = musicAppPath,
+                        Arguments = "",
+                        UseShellExecute = true,
+                        WorkingDirectory = musicFolder
+                    };
+
+                    var process = Process.Start(startInfo);
+                    Console.WriteLine($"✅ La_City_Music iniciado! PID: {process?.Id}");
+                }
+                else
+                {
+                    Console.WriteLine($"❌ Arquivo não encontrado: {musicAppPath}");
+
+                    if (Directory.Exists(musicFolder))
+                    {
+                        Console.WriteLine($"Conteúdo da pasta {musicFolder}:");
+                        foreach (var file in Directory.GetFiles(musicFolder))
+                        {
+                            Console.WriteLine($"  - {Path.GetFileName(file)}");
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine($"❌ Pasta não existe: {musicFolder}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Erro: {ex.Message}");
             }
         }
     }
