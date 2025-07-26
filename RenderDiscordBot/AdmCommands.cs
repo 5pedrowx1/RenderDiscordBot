@@ -4,7 +4,7 @@ using DSharpPlus.CommandsNext;
 using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.Entities;
 
-namespace RenderDiscordBot
+namespace DiscordBot
 {
     class AdmCommands : BaseCommandModule
     {
