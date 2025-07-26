@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace RenderDiscordBot
+namespace DiscordBot
 {
     public static class SecureFileManager
     {
