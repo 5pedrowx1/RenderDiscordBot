@@ -4,7 +4,7 @@ using DSharpPlus.Entities;
 using Newtonsoft.Json.Linq;
 using System.Text.RegularExpressions;
 
-namespace RenderDiscordBot
+namespace DiscordBot
 {
     public class News : BaseCommandModule
     {
