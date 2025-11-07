@@ -158,7 +158,8 @@ namespace DiscordBot
         {
             try
             {
-                string musicFolder = Path.Combine(Environment.CurrentDirectory, "La_City_Music");
+                //string musicFolder = Path.Combine(Environment.CurrentDirectory, "La_City_Music");
+                string musicFolder = "/home/container/RenderDiscordBot/La_City_Music";
                 string musicAppPath = Path.Combine(musicFolder, "La_City_Music.dll");
         
                 Console.WriteLine($"Procurando por: {musicAppPath}");
