@@ -108,7 +108,7 @@ namespace DiscordBot
                     {
                         Hostname = "10.0.1.104",
                         Port = 25562,
-                        Secured = true
+                        Secured = false
                     };
                     var lavalinkConfig = new LavalinkConfiguration
                     {
