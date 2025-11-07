@@ -20,8 +20,22 @@ namespace DiscordBot
 
         static async Task Main()
         {
-            string firebaseEncryptionKey = Environment.GetEnvironmentVariable("FIREBASE_ENCRYPTION_KEY")
-                ?? throw new Exception("Chave de criptografia para o Firebase não configurada.");
+             string keyFilePath = "firebase_key.txt";
+             string firebaseEncryptionKey;
+            
+             if (File.Exists(keyFilePath))
+             {
+                 firebaseEncryptionKey = await File.ReadAllTextAsync(keyFilePath);
+                 firebaseEncryptionKey = firebaseEncryptionKey.Trim();
+                 Console.WriteLine("Chave Firebase carregada do arquivo local.");
+             }
+             else
+             {
+                 firebaseEncryptionKey = Environment.GetEnvironmentVariable("FIREBASE_ENCRYPTION_KEY")
+                     ?? throw new Exception("Chave de criptografia para o Firebase não configurada (nem arquivo encontrado).");
+                 Console.WriteLine("Chave Firebase carregada da variável de ambiente.");
+             }
+            
             FirebaseService.InitializeFirebase(firebaseEncryptionKey);
             BotConfig = await ConfigService.GetConfigFromFirestoreAsync();
 
