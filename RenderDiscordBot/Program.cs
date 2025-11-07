@@ -20,25 +20,25 @@ namespace DiscordBot
 
         static async Task Main()
         {
-             string keyFilePath = "firebase_key.txt";
-             string firebaseEncryptionKey;
-            
-             if (File.Exists(keyFilePath))
-             {
-                 firebaseEncryptionKey = await File.ReadAllTextAsync(keyFilePath);
-                 firebaseEncryptionKey = firebaseEncryptionKey.Trim();
-                 Console.WriteLine("Chave Firebase carregada do arquivo local.");
-             }
-             else
-             {
-                 firebaseEncryptionKey = Environment.GetEnvironmentVariable("FIREBASE_ENCRYPTION_KEY")
-                     ?? throw new Exception("Chave de criptografia para o Firebase não configurada (nem arquivo encontrado).");
-                 Console.WriteLine("Chave Firebase carregada da variável de ambiente.");
-             }
-            
+            string keyFilePath = "firebase_key.txt";
+            string firebaseEncryptionKey;
+        
+            if (File.Exists(keyFilePath))
+            {
+                firebaseEncryptionKey = await File.ReadAllTextAsync(keyFilePath);
+                firebaseEncryptionKey = firebaseEncryptionKey.Trim();
+                Console.WriteLine("Chave Firebase carregada do arquivo local.");
+            }
+            else
+            {
+                firebaseEncryptionKey = Environment.GetEnvironmentVariable("FIREBASE_ENCRYPTION_KEY")
+                    ?? throw new Exception("Chave de criptografia para o Firebase não configurada (nem arquivo encontrado).");
+                Console.WriteLine("Chave Firebase carregada da variável de ambiente.");
+            }
+        
             FirebaseService.InitializeFirebase(firebaseEncryptionKey);
             BotConfig = await ConfigService.GetConfigFromFirestoreAsync();
-
+        
             Client = new DiscordClient(new DiscordConfiguration()
             {
                 Intents = DiscordIntents.All,
@@ -47,7 +47,7 @@ namespace DiscordBot
                 AutoReconnect = true,
                 MinimumLogLevel = LogLevel.None
             });
-
+        
             var lavalink = Client.UseLavalink();
             var endpoint = new ConnectionEndpoint
             {
@@ -62,7 +62,7 @@ namespace DiscordBot
                 SocketEndpoint = endpoint,
                 SocketAutoReconnect = true
             };
-
+        
             var services = new ServiceCollection();
             services.AddSingleton(Client);
             services.AddSingleton(BotConfig);
@@ -80,7 +80,7 @@ namespace DiscordBot
             //var newsModule = serviceProvider.GetRequiredService<News>();
             Client.GuildMemberUpdated += entryHandler.OnUserUpdatedAsync;
             Client.GuildMemberAdded += entryHandler.OnUserJoinedAsync;
-
+        
             var commandsConfig = new CommandsNextConfiguration
             {
                 StringPrefixes = [BotConfig.CommandPrefix],
@@ -88,19 +88,19 @@ namespace DiscordBot
                 EnableMentionPrefix = BotConfig.EnableMentionPrefix,
                 Services = serviceProvider
             };
-
+        
             var commands = Client.UseCommandsNext(commandsConfig);
             commands.RegisterCommands<TicketHandler>();
             commands.RegisterCommands<SuggestionsHandler>();
             commands.RegisterCommands<BotFuns>();
             commands.RegisterCommands<AdmCommands>();
             commands.CommandErrored += OnCommandError;
-
+        
             Client.UseInteractivity(new DSharpPlus.Interactivity.InteractivityConfiguration
             {
                 Timeout = TimeSpan.FromMinutes(2)
             });
-
+        
             await Client.ConnectAsync();
             await Client.GetLavalink().ConnectAsync(lavalinkConfig);
             _lavalinkMonitorTimer = new Timer(async _ => await CheckLavalinkConnection(), null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
