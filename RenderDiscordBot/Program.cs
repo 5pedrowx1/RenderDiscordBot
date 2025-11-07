@@ -36,13 +36,13 @@ namespace DiscordBot
             var lavalink = Client.UseLavalink();
             var endpoint = new ConnectionEndpoint
             {
-                Hostname = "lava-all.ajieblogs.eu.org",
-                Port = 443,
-                Secured = true
+                Hostname = "10.0.1.104",
+                Port = 25562,
+                Secured = false
             };
             var lavalinkConfig = new LavalinkConfiguration
             {
-                Password = "https://dsc.gg/ajidevserver",
+                Password = "FreMdp5*5rty-",
                 RestEndpoint = endpoint,
                 SocketEndpoint = endpoint,
                 SocketAutoReconnect = true
@@ -103,22 +103,22 @@ namespace DiscordBot
                 if (!lavalink.ConnectedNodes.Any())
                 {
                     Console.WriteLine("Lavalink desconectado, tentando reconectar...");
-
+        
                     var endpoint = new ConnectionEndpoint
                     {
-                        Hostname = "lava-all.ajieblogs.eu.org",
-                        Port = 443,
+                        Hostname = "10.0.1.104",
+                        Port = 25562,
                         Secured = true
                     };
                     var lavalinkConfig = new LavalinkConfiguration
                     {
-                        Password = "https://dsc.gg/ajidevserver",
+                        Password = "FreMdp5*5rty-",
                         RestEndpoint = endpoint,
                         SocketEndpoint = endpoint
                     };
-
+        
                     await lavalink.ConnectAsync(lavalinkConfig);
-
+        
                     if (lavalink.ConnectedNodes.Any())
                         Console.WriteLine("Reconexão com o Lavalink realizada com sucesso.");
                     else
