@@ -159,29 +159,50 @@ namespace DiscordBot
             try
             {
                 string musicFolder = Path.Combine(Environment.CurrentDirectory, "La_City_Music");
-                string musicAppPath = Path.Combine(musicFolder, "La_City_Music.exe");
-
+                string musicAppPath = Path.Combine(musicFolder, "La_City_Music.dll");
+        
                 Console.WriteLine($"Procurando por: {musicAppPath}");
-
+        
                 if (File.Exists(musicAppPath))
                 {
-                    Console.WriteLine("✅ La_City_Music.exe encontrado, tentando executar...");
-
+                    Console.WriteLine("✅ La_City_Music.dll encontrado, tentando executar...");
+        
                     ProcessStartInfo startInfo = new ProcessStartInfo
                     {
-                        FileName = musicAppPath,
-                        Arguments = "",
-                        UseShellExecute = true,
-                        WorkingDirectory = musicFolder
+                        FileName = "dotnet",
+                        Arguments = $"\"{musicAppPath}\"",
+                        UseShellExecute = false,
+                        WorkingDirectory = musicFolder,
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        CreateNoWindow = false
                     };
-
+        
                     var process = Process.Start(startInfo);
-                    Console.WriteLine($"✅ La_City_Music iniciado! PID: {process?.Id}");
+        
+                    if (process != null)
+                    {
+                        Console.WriteLine($"✅ La_City_Music iniciado! PID: {process.Id}");
+        
+                        process.OutputDataReceived += (sender, e) =>
+                        {
+                            if (!string.IsNullOrEmpty(e.Data))
+                                Console.WriteLine($"[Music App] {e.Data}");
+                        };
+                        process.ErrorDataReceived += (sender, e) =>
+                        {
+                            if (!string.IsNullOrEmpty(e.Data))
+                                Console.WriteLine($"[Music App ERROR] {e.Data}");
+                        };
+        
+                        process.BeginOutputReadLine();
+                        process.BeginErrorReadLine();
+                    }
                 }
                 else
                 {
                     Console.WriteLine($"❌ Arquivo não encontrado: {musicAppPath}");
-
+        
                     if (Directory.Exists(musicFolder))
                     {
                         Console.WriteLine($"Conteúdo da pasta {musicFolder}:");
@@ -198,7 +219,8 @@ namespace DiscordBot
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"❌ Erro: {ex.Message}");
+                Console.WriteLine($"❌ Erro ao executar: {ex.Message}");
+                Console.WriteLine($"Stack Trace: {ex.StackTrace}");
             }
         }
     }
